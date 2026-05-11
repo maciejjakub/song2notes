@@ -2,3 +2,12 @@ fastapi
 uvicorn
 python-multipart
 pydantic-settings
+pytest
+httpx
+demucs
+torchaudio
+crepe
+tensorflow
+pretty_midi
+librosa
+torchcodec
