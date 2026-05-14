@@ -1,0 +1,62 @@
+:root {
+  --bg-0: #0a0a16;
+  --bg-1: #11122a;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-strong: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #f4f4f8;
+  --text-dim: #a5a5b8;
+  --text-faint: #6b6b7e;
+  --accent: #7c5cff;
+  --accent-2: #4ed1ff;
+  --danger: #ff6b6b;
+  --success: #5cf2a7;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg-0);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 1200px 700px at 20% -10%, rgba(124, 92, 255, 0.25), transparent 60%),
+    radial-gradient(ellipse 1000px 600px at 100% 10%, rgba(78, 209, 255, 0.18), transparent 60%),
+    radial-gradient(ellipse 800px 500px at 60% 110%, rgba(124, 92, 255, 0.18), transparent 60%),
+    var(--bg-0);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}

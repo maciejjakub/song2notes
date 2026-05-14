@@ -35,13 +35,26 @@ The application follows a simple, synchronous pipeline:
 
 ### Running the API
 
-Start the server using Uvicorn with auto-reload enabled:
+The backend lives in `backend/`. Start the server using Uvicorn with auto-reload enabled:
 
 ```bash
+cd backend
 uvicorn app.main:app --reload
 ```
 
-The `--reload` flag watches your source files for changes and restarts the server automatically — no manual restart needed during development. The API will be available at `http://127.0.0.1:8000`.
+The API will be available at `http://127.0.0.1:8000`.
+
+### Running the frontend
+
+The React app lives in `frontend/`. From the project root:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The UI will be available at `http://localhost:5173` and expects the backend to be running on `http://127.0.0.1:8000`.
 
 ## Usage
 
@@ -52,7 +65,7 @@ Send an audio file to the `/analyze` endpoint to run the entire pipeline:
 ```bash
 curl -X POST "http://127.0.0.1:8000/analyze" \
      -H "Content-Type: multipart/form-data" \
-     -F "audio=@samples/test.mp3"
+     -F "audio=@../samples/test.mp3"
 ```
 
 The response contains the `job_id`, `note_count`, a list of `notes`, a `note_name` array of pitch name strings, and a `midi_download_url`.
