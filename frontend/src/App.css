@@ -3,14 +3,32 @@
   display: flex;
   flex-direction: column;
   padding: 32px 24px 64px;
-  max-width: 1080px;
+  max-width: 1280px;
   margin: 0 auto;
   width: 100%;
 }
 
 /* ---------- Header ---------- */
 .app-header {
-  margin-bottom: 56px;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* ---------- Body layout ---------- */
+.app-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 880px) {
+  .app-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 .brand {
@@ -43,6 +61,139 @@
 /* ---------- Main + Hero ---------- */
 .app-main {
   flex: 1;
+  min-width: 0;
+}
+
+/* ---------- History panel ---------- */
+.history-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 880px) {
+  .history-panel {
+    position: static;
+    max-height: 320px;
+  }
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.history-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.history-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  background: var(--surface-strong);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-empty {
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-item {
+  display: flex;
+  align-items: stretch;
+  border-radius: 10px;
+  transition: background 150ms ease;
+}
+
+.history-item:hover {
+  background: var(--surface-strong);
+}
+
+.history-item.active {
+  background: rgba(124, 92, 255, 0.18);
+}
+
+.history-item-main {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--text);
+  min-width: 0;
+}
+
+.history-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-dot {
+  opacity: 0.6;
+}
+
+.history-item-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  padding: 0 12px;
+  cursor: pointer;
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity 150ms ease, color 150ms ease;
+}
+
+.history-item:hover .history-item-delete {
+  opacity: 1;
+}
+
+.history-item-delete:hover {
+  color: var(--danger);
 }
 
 .hero {
@@ -335,6 +486,56 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-top: 4px;
+}
+
+/* ---------- MIDI Player ---------- */
+.midi-player-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
+
+.midi-visualizer-wrap {
+  position: relative;
+}
+
+.midi-visualizer {
+  display: block;
+  width: 100%;
+  height: 160px;
+}
+
+.midi-playhead {
+  position: absolute;
+  top: 0;
+  /* html-midi-player piano-roll pins current time at SCROLL_INTO_VIEW_PADDING = 100px */
+  left: 100px;
+  width: 2px;
+  height: 100%;
+  background: var(--accent-2);
+  box-shadow: 0 0 8px var(--accent-2), 0 0 2px var(--accent-2);
+  pointer-events: none;
+  animation: playhead-pulse 2s ease-in-out infinite;
+}
+
+@keyframes playhead-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1; }
+}
+
+.midi-player {
+  display: block;
+  width: 100%;
+  --player-background: #12122a;
+  --player-seeking-color: var(--accent-2);
+  border-top: 1px solid var(--border);
+}
+
+midi-player::part(play-button) {
+  color: var(--accent);
+  background: transparent;
 }
 
 /* ---------- Download card ---------- */

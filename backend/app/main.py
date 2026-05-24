@@ -1,19 +1,24 @@
+import json
 import os
 import uuid
 import shutil
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from sqlmodel import Session, select
 from .config import settings
 from .models import JobResponse
 from .pipeline import separate_vocals, extract_notes
+from .db import init_db, get_session
+from .db_models import Job, JobSummary
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     os.makedirs(settings.OUTPUT_DIR, exist_ok=True)
+    init_db()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -99,7 +104,10 @@ async def separate(job_id: str):
     }
 
 @app.post("/analyze", response_model=dict)
-async def analyze_audio(audio: UploadFile = File(...)):
+async def analyze_audio(
+    audio: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
     # 1. Reuse upload logic
     ext = Path(audio.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -111,6 +119,7 @@ async def analyze_audio(audio: UploadFile = File(...)):
     if file_size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large")
 
+    original_filename = audio.filename or f"upload{ext}"
     job_id = str(uuid.uuid4())
     upload_path = Path(settings.UPLOAD_DIR) / f"{job_id}{ext}"
     with open(upload_path, "wb") as buffer:
@@ -121,12 +130,28 @@ async def analyze_audio(audio: UploadFile = File(...)):
         vocals_path = separate_vocals(upload_path)
         # 3. Extract
         analysis_result = extract_notes(vocals_path, job_id)
-        
+
+        notes = analysis_result["notes"]
+        duration_sec = float(notes[-1]["end_time_sec"]) if notes else 0.0
+        midi_path = str(Path(settings.OUTPUT_DIR) / job_id / "output.mid")
+
+        job = Job(
+            id=job_id,
+            original_filename=original_filename,
+            note_count=analysis_result["note_count"],
+            tuning_offset_semitones=analysis_result.get("tuning_offset_semitones"),
+            duration_sec=duration_sec,
+            midi_path=midi_path,
+            notes_json=json.dumps(notes),
+        )
+        session.add(job)
+        session.commit()
+
         return {
             "job_id": job_id,
             "status": "complete",
             "note_count": analysis_result["note_count"],
-            "notes": analysis_result["notes"],
+            "notes": notes,
             "note_name": analysis_result["note_name"],
             "tuning_offset_semitones": analysis_result.get("tuning_offset_semitones"),
             "midi_download_url": f"/download/{job_id}/midi"
@@ -145,11 +170,41 @@ async def download_midi(job_id: str):
         raise HTTPException(status_code=404, detail="MIDI file not found")
     return FileResponse(midi_path, media_type="audio/midi", filename=f"{job_id}.mid")
 
+@app.get("/jobs", response_model=list[JobSummary])
+async def list_jobs(session: Session = Depends(get_session)):
+    jobs = session.exec(select(Job).order_by(Job.created_at.desc())).all()
+    return [JobSummary.model_validate(j, from_attributes=True) for j in jobs]
+
 @app.get("/jobs/{job_id}")
-async def get_job_status(job_id: str):
-    # This is a synchronous placeholder. 
-    # For a real pipeline, we'd check a database or job queue.
-    midi_path = Path(settings.OUTPUT_DIR) / job_id / "output.mid"
-    if midi_path.exists():
-        return {"job_id": job_id, "status": "complete"}
-    return {"job_id": job_id, "status": "processing or not found"}
+async def get_job(job_id: str, session: Session = Depends(get_session)):
+    job = session.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {
+        "job_id": job.id,
+        "original_filename": job.original_filename,
+        "created_at": job.created_at.isoformat(),
+        "status": job.status,
+        "note_count": job.note_count,
+        "notes": json.loads(job.notes_json),
+        "tuning_offset_semitones": job.tuning_offset_semitones,
+        "duration_sec": job.duration_sec,
+        "midi_download_url": f"/download/{job.id}/midi",
+    }
+
+@app.delete("/jobs/{job_id}")
+async def delete_job(job_id: str, session: Session = Depends(get_session)):
+    job = session.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Best-effort filesystem cleanup
+    shutil.rmtree(Path(settings.OUTPUT_DIR) / job_id, ignore_errors=True)
+    for ext in ALLOWED_EXTENSIONS:
+        upload_file = Path(settings.UPLOAD_DIR) / f"{job_id}{ext}"
+        if upload_file.exists():
+            upload_file.unlink()
+
+    session.delete(job)
+    session.commit()
+    return {"job_id": job_id, "status": "deleted"}

@@ -15,3 +15,25 @@ export type AnalyzeResponse = {
   tuning_offset_semitones: number | null;
   midi_download_url: string;
 };
+
+export type JobSummary = {
+  id: string;
+  original_filename: string;
+  created_at: string;
+  status: string;
+  note_count: number;
+  tuning_offset_semitones: number | null;
+  duration_sec: number;
+};
+
+export type JobDetail = {
+  job_id: string;
+  original_filename: string;
+  created_at: string;
+  status: string;
+  note_count: number;
+  notes: Note[];
+  tuning_offset_semitones: number | null;
+  duration_sec: number;
+  midi_download_url: string;
+};

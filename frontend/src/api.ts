@@ -1,16 +1,8 @@
-import type { AnalyzeResponse } from './types';
+import type { AnalyzeResponse, JobDetail, JobSummary } from './types';
 
 export const API_BASE = 'http://127.0.0.1:8000';
 
-export async function analyzeAudio(file: File): Promise<AnalyzeResponse> {
-  const form = new FormData();
-  form.append('audio', file);
-
-  const res = await fetch(`${API_BASE}/analyze`, {
-    method: 'POST',
-    body: form,
-  });
-
+async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = `Request failed with status ${res.status}`;
     try {
@@ -21,8 +13,29 @@ export async function analyzeAudio(file: File): Promise<AnalyzeResponse> {
     }
     throw new Error(detail);
   }
-
   return res.json();
+}
+
+export async function analyzeAudio(file: File): Promise<AnalyzeResponse> {
+  const form = new FormData();
+  form.append('audio', file);
+  const res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: form });
+  return handle<AnalyzeResponse>(res);
+}
+
+export async function listJobs(): Promise<JobSummary[]> {
+  const res = await fetch(`${API_BASE}/jobs`);
+  return handle<JobSummary[]>(res);
+}
+
+export async function getJob(jobId: string): Promise<JobDetail> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}`);
+  return handle<JobDetail>(res);
+}
+
+export async function deleteJob(jobId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to delete job (${res.status})`);
 }
 
 export function midiDownloadUrl(path: string): string {

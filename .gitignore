@@ -43,4 +43,8 @@ venv.bak/
 /samples
 /separated
 
+# SQLite database
+*.db
+*.db-journal
+
 .DS_Store
