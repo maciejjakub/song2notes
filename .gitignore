@@ -42,3 +42,5 @@ venv.bak/
 # Project directories
 /samples
 /separated
+
+.DS_Store
