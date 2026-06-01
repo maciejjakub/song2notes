@@ -488,86 +488,88 @@
   margin-top: 4px;
 }
 
-/* ---------- MIDI Player ---------- */
-/* .midi-player-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
+/* ---------- MIDI Player + Visualizer ---------- */
+/* Visualizer (top) and player (bottom) are joined into one seamless card. */
+.midi-player-section {
   border-radius: 16px;
-  overflow: hidden;
-  backdrop-filter: blur(20px);
+  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6);
 }
 
 .midi-visualizer-wrap {
-  position: relative;
-}
-
-.midi-visualizer {
   display: block;
-  width: 100%;
-  height: 160px;
 }
 
-.midi-player {
-  display: block;
-  width: 100%;
-  border-top: 1px solid var(--border);
-} */
-
-/* Custom player style */
-.midi-player {
-  --player-background: #ffffff;
-}
-.midi-player::part(control-panel) {
-  background: #ff5;
-  border: 2px solid #000;
-  border-radius: 10px 10px 0 0;
-}
-.midi-player::part(play-button) {
-  color: #353;
-  border: 2px solid currentColor;
-  background-color: #4d4;
-  border-radius: 20px;
-  transition: all 0.2s;
-  content: 'hello';
-}
-.midi-player::part(play-button):hover {
-  color: #0a0;
-  background-color: #5f5;
-  border-radius: 10px;
-}
-.midi-player::part(time) {
-  font-family: monospace;
-}
-
-/* Custom visualizer style */
 .midi-visualizer .piano-roll-visualizer {
-  background: #ffd;
-  border: 2px solid black;
-  border-top: none;
-  border-radius: 0 0 10px 10px;
-  margin: 4px;
-  margin-top: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  margin: 0;
   overflow: auto;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
+
+/* Notes: purple = instrument 0, cyan = instrument 2, to match the app accents. */
 .midi-visualizer svg rect.note {
-  opacity: 0.6;
-  stroke-width: 2;
+  opacity: 0.65;
+  rx: 2;
+  stroke-width: 1;
+  transition: opacity 120ms ease;
 }
-.midi-visualizer svg rect.note[data-instrument="0"]{
-  fill: #e22;
-  stroke: #500;
+.midi-visualizer svg rect.note[data-instrument="0"] {
+  fill: var(--accent);
+  stroke: #b3a0ff;
 }
-.midi-visualizer svg rect.note[data-instrument="2"]{
-  fill: #2ee;
-  stroke: #055;
+.midi-visualizer svg rect.note[data-instrument="2"] {
+  fill: var(--accent-2);
+  stroke: #a9ecff;
 }
-.midi-visualizer svg rect.note[data-is-drum="true"]{
-  fill: #888;
-  stroke: #888;
+.midi-visualizer svg rect.note[data-is-drum="true"] {
+  fill: var(--text-faint);
+  stroke: var(--text-faint);
 }
 .midi-visualizer svg rect.note.active {
-  opacity: 0.9;
-  stroke: #000;
+  opacity: 1;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.midi-player {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+.midi-player::part(control-panel) {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  padding: 10px 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.midi-player::part(play-button) {
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  transition: background 150ms ease, transform 150ms ease;
+}
+.midi-player::part(play-button):hover {
+  background: #8e74ff;
+  transform: translateY(-1px);
+}
+.midi-player::part(time) {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.midi-player::part(current-time) {
+  color: var(--text);
+}
+.midi-player::part(seek-bar) {
+  accent-color: var(--accent);
 }
 
 /* ---------- Download card ---------- */

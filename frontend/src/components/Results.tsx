@@ -68,6 +68,7 @@ export function Results({ result, fileName, onReset }: Props) {
         </div>
         <midi-player
           src={downloadHref}
+          sound-font="https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus"
           className="midi-player"
         />
       </div>
