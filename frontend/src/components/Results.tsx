@@ -20,24 +20,7 @@ function formatDuration(start: number, end: number): string {
 }
 
 export function Results({ result, fileName, onReset }: Props) {
-  const playerRef = useRef<HTMLElement>(null);
-  const visualizerRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const player = playerRef.current as HTMLElement & { visualizer?: HTMLElement | null };
-    if (!player) return;
-    if (visualizerRef.current) {
-      player.visualizer = visualizerRef.current;
-    }
-    // React doesn't reliably serialize CSS custom properties on custom elements,
-    // so we set them directly on the DOM node instead.
-    player.style.setProperty('--player-background', '#12122a');
-    player.style.setProperty('--player-color', '#7c5cff');
-    player.style.setProperty('--player-seeking-color', '#4ed1ff');
-  }, [result.job_id]);
-
   const downloadHref = midiDownloadUrl(result.midi_download_url);
-  const midiSrc = downloadHref;
   const tuningCents =
     result.tuning_offset_semitones != null
       ? Math.round(result.tuning_offset_semitones * 100)
@@ -80,15 +63,12 @@ export function Results({ result, fileName, onReset }: Props) {
         <div className="midi-visualizer-wrap">
           <midi-visualizer
             type="piano-roll"
-            src={midiSrc}
-            ref={visualizerRef}
+            src={downloadHref}
             className="midi-visualizer"
           />
-          <div className="midi-playhead" aria-hidden="true" />
         </div>
         <midi-player
-          src={midiSrc}
-          ref={playerRef}
+          src={downloadHref}
           className="midi-player"
         />
       </div>

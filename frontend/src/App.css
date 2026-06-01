@@ -507,35 +507,10 @@
   height: 160px;
 }
 
-.midi-playhead {
-  position: absolute;
-  top: 0;
-  /* html-midi-player piano-roll pins current time at SCROLL_INTO_VIEW_PADDING = 100px */
-  left: 100px;
-  width: 2px;
-  height: 100%;
-  background: var(--accent-2);
-  box-shadow: 0 0 8px var(--accent-2), 0 0 2px var(--accent-2);
-  pointer-events: none;
-  animation: playhead-pulse 2s ease-in-out infinite;
-}
-
-@keyframes playhead-pulse {
-  0%, 100% { opacity: 0.7; }
-  50%       { opacity: 1; }
-}
-
 .midi-player {
   display: block;
   width: 100%;
-  --player-background: #12122a;
-  --player-seeking-color: var(--accent-2);
   border-top: 1px solid var(--border);
-}
-
-midi-player::part(play-button) {
-  color: var(--accent);
-  background: transparent;
 }
 
 /* ---------- Download card ---------- */
