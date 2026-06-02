@@ -488,29 +488,67 @@
   margin-top: 4px;
 }
 
-/* ---------- MIDI Player + Visualizer ---------- */
-/* Visualizer (top) and player (bottom) are joined into one seamless card. */
+/* ---------- MIDI Player + Visualizers ---------- */
+/* One shared player drives three visualizers (piano-roll, waterfall, staff),
+   each rendered as its own labeled card so they can be compared side by side. */
 .midi-player-section {
-  border-radius: 16px;
-  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.visualizer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.visualizer-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.visualizer-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .midi-visualizer-wrap {
   display: block;
 }
 
-.midi-visualizer .piano-roll-visualizer {
+/* Shared card styling for every visualizer type's inner wrapper. */
+.midi-visualizer .piano-roll-visualizer,
+.midi-visualizer .waterfall-visualizer,
+.midi-visualizer .staff-visualizer {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: 16px 16px 0 0;
+  border-radius: 16px;
   margin: 0;
   overflow: auto;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* Notes: purple = instrument 0, cyan = instrument 2, to match the app accents. */
+/* Waterfall scrolls vertically as notes fall, so it needs a fixed viewport. */
+.midi-visualizer .waterfall-visualizer {
+  height: 220px;
+}
+
+/* Staff notation reads better on a light surface. */
+.midi-visualizer .staff-visualizer {
+  background: #f4f4f8;
+  padding: 8px 0;
+}
+
+/* Notes: purple = instrument 0, cyan = instrument 2, to match the app accents.
+   Applies to the rect-based renderers (piano-roll, waterfall); staff uses its
+   own notation glyphs and is highlighted by the library. */
 .midi-visualizer svg rect.note {
   opacity: 0.65;
   rx: 2;
@@ -543,8 +581,7 @@
 .midi-player::part(control-panel) {
   background: var(--surface-strong);
   border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 16px 16px;
+  border-radius: 16px;
   padding: 10px 14px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

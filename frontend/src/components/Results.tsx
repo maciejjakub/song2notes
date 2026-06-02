@@ -23,12 +23,13 @@ export function Results({ result, fileName, onReset }: Props) {
   const downloadHref = midiDownloadUrl(result.midi_download_url);
   const playerRef = useRef<HTMLElement>(null);
 
-  // Link the player to its visualizer after both are committed to the DOM, so
-  // the player's internal `querySelectorAll` for the visualizer actually finds
-  // it. Setting this in JSX fails on remounts because React assigns attributes
+  // Link the player to its visualizers after they are committed to the DOM, so
+  // the player's internal `querySelectorAll` actually finds them. The selector
+  // is a class, so the single player drives all three visualizers at once.
+  // Setting this in JSX fails on remounts because React assigns attributes
   // while the subtree is still detached from the document.
   useEffect(() => {
-    playerRef.current?.setAttribute('visualizer', '#midi-visualizer');
+    playerRef.current?.setAttribute('visualizer', '.midi-visualizer');
   }, [downloadHref]);
   const tuningCents =
     result.tuning_offset_semitones != null
@@ -69,13 +70,39 @@ export function Results({ result, fileName, onReset }: Props) {
       </div>
 
       <div className="midi-player-section">
-        <div className="midi-visualizer-wrap">
-          <midi-visualizer
-            id="midi-visualizer"
-            type="piano-roll"
-            src={downloadHref}
-            className="midi-visualizer"
-          />
+        <div className="visualizer-stack">
+          <figure className="visualizer-figure">
+            <figcaption className="visualizer-label">Piano roll</figcaption>
+            <div className="midi-visualizer-wrap">
+              <midi-visualizer
+                type="piano-roll"
+                src={downloadHref}
+                className="midi-visualizer"
+              />
+            </div>
+          </figure>
+
+          <figure className="visualizer-figure">
+            <figcaption className="visualizer-label">Waterfall</figcaption>
+            <div className="midi-visualizer-wrap">
+              <midi-visualizer
+                type="waterfall"
+                src={downloadHref}
+                className="midi-visualizer"
+              />
+            </div>
+          </figure>
+
+          <figure className="visualizer-figure">
+            <figcaption className="visualizer-label">Staff</figcaption>
+            <div className="midi-visualizer-wrap">
+              <midi-visualizer
+                type="staff"
+                src={downloadHref}
+                className="midi-visualizer"
+              />
+            </div>
+          </figure>
         </div>
         <midi-player
           ref={playerRef}
