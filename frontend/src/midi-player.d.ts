@@ -6,6 +6,7 @@ declare module 'react' {
       'midi-player': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         src?: string;
         'sound-font'?: string;
+        visualizer?: string;
         loop?: boolean;
       };
       'midi-visualizer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {

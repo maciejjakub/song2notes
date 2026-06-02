@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { AnalyzeResponse } from '../types';
 import { midiDownloadUrl } from '../api';
 
@@ -20,6 +21,15 @@ function formatDuration(start: number, end: number): string {
 
 export function Results({ result, fileName, onReset }: Props) {
   const downloadHref = midiDownloadUrl(result.midi_download_url);
+  const playerRef = useRef<HTMLElement>(null);
+
+  // Link the player to its visualizer after both are committed to the DOM, so
+  // the player's internal `querySelectorAll` for the visualizer actually finds
+  // it. Setting this in JSX fails on remounts because React assigns attributes
+  // while the subtree is still detached from the document.
+  useEffect(() => {
+    playerRef.current?.setAttribute('visualizer', '#midi-visualizer');
+  }, [downloadHref]);
   const tuningCents =
     result.tuning_offset_semitones != null
       ? Math.round(result.tuning_offset_semitones * 100)
@@ -61,12 +71,14 @@ export function Results({ result, fileName, onReset }: Props) {
       <div className="midi-player-section">
         <div className="midi-visualizer-wrap">
           <midi-visualizer
+            id="midi-visualizer"
             type="piano-roll"
             src={downloadHref}
             className="midi-visualizer"
           />
         </div>
         <midi-player
+          ref={playerRef}
           src={downloadHref}
           sound-font="https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus"
           className="midi-player"
