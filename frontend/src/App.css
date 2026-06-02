@@ -540,6 +540,16 @@
   height: 220px;
 }
 
+/* Note-name labels we inject onto the waterfall's white keys. */
+.midi-visualizer .waterfall-piano text.key-label {
+  fill: #3a3a4a;
+  font-size: 8px;
+  font-weight: 600;
+  font-family: -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Staff notation reads better on a light surface. */
 .midi-visualizer .staff-visualizer {
   background: #f4f4f8;

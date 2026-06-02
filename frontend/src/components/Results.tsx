@@ -19,9 +19,55 @@ function formatDuration(start: number, end: number): string {
   return `${d.toFixed(2)}s`;
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+
+// The waterfall keyboard renders only bare key rects (each carrying its MIDI
+// pitch in data-pitch), so we draw note-name labels onto the white keys
+// ourselves. White keys are naturals; we append the octave on C to anchor the
+// register without cluttering every key.
+function labelWaterfallKeys(visualizer: HTMLElement) {
+  const piano = visualizer.querySelector('svg.waterfall-piano');
+  if (!piano) return;
+  const whiteKeys = piano.querySelectorAll<SVGRectElement>('rect.white');
+  if (whiteKeys.length === 0 || piano.querySelector('.key-label')) return;
+
+  whiteKeys.forEach((key) => {
+    const pitch = Number(key.dataset.pitch);
+    const x = parseFloat(key.getAttribute('x') || '0');
+    const w = parseFloat(key.getAttribute('width') || '0');
+    const y = parseFloat(key.getAttribute('y') || '0');
+    const h = parseFloat(key.getAttribute('height') || '0');
+
+    const name = NOTE_NAMES[pitch % 12];
+    const label = name === 'C' ? `${name}${Math.floor(pitch / 12) - 1}` : name;
+
+    const text = document.createElementNS(SVG_NS, 'text');
+    text.classList.add('key-label');
+    text.setAttribute('x', String(x + w / 2));
+    text.setAttribute('y', String(y + h - 6));
+    text.setAttribute('text-anchor', 'middle');
+    text.textContent = label;
+    piano.appendChild(text);
+  });
+}
+
 export function Results({ result, fileName, onReset }: Props) {
   const downloadHref = midiDownloadUrl(result.midi_download_url);
   const playerRef = useRef<HTMLElement>(null);
+  const waterfallRef = useRef<HTMLElement>(null);
+
+  // Draw note-name labels on the waterfall keyboard. The visualizer renders
+  // asynchronously (it fetches the MIDI first) and rebuilds the keyboard on
+  // reload, so watch for the keys to (re)appear and (re)label them.
+  useEffect(() => {
+    const el = waterfallRef.current;
+    if (!el) return;
+    labelWaterfallKeys(el);
+    const observer = new MutationObserver(() => labelWaterfallKeys(el));
+    observer.observe(el, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [downloadHref]);
 
   // Link the player to its visualizers after they are committed to the DOM, so
   // the player's internal `querySelectorAll` actually finds them. The selector
@@ -86,6 +132,7 @@ export function Results({ result, fileName, onReset }: Props) {
             <figcaption className="visualizer-label">Waterfall</figcaption>
             <div className="midi-visualizer-wrap">
               <midi-visualizer
+                ref={waterfallRef}
                 type="waterfall"
                 src={downloadHref}
                 className="midi-visualizer"
