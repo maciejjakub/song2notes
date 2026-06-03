@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, JobDetail, JobSummary } from './types';
+import type { AnalyzeResponse, AppConfig, JobDetail, JobSummary } from './types';
 
 export const API_BASE = 'http://127.0.0.1:8000';
 
@@ -14,6 +14,11 @@ async function handle<T>(res: Response): Promise<T> {
     throw new Error(detail);
   }
   return res.json();
+}
+
+export async function getConfig(): Promise<AppConfig> {
+  const res = await fetch(`${API_BASE}/config`);
+  return handle<AppConfig>(res);
 }
 
 export async function analyzeAudio(file: File): Promise<AnalyzeResponse> {

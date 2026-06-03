@@ -3,8 +3,8 @@ import { Dropzone } from './components/Dropzone';
 import { Results } from './components/Results';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
-import { analyzeAudio, deleteJob, getJob, listJobs } from './api';
-import type { AnalyzeResponse, JobSummary } from './types';
+import { analyzeAudio, deleteJob, getConfig, getJob, listJobs } from './api';
+import type { AnalyzeResponse, AppConfig, JobSummary } from './types';
 import './App.css';
 
 type Status = 'idle' | 'processing' | 'done' | 'error';
@@ -18,6 +18,7 @@ function App() {
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
 
   const refreshJobs = useCallback(async () => {
     try {
@@ -33,6 +34,12 @@ function App() {
   useEffect(() => {
     refreshJobs();
   }, [refreshJobs]);
+
+  useEffect(() => {
+    getConfig()
+      .then(setConfig)
+      .catch((err) => console.error('Failed to load config; using defaults', err));
+  }, []);
 
   const handleFile = async (file: File) => {
     setFileName(file.name);
@@ -136,7 +143,11 @@ function App() {
                 Upload an audio file. We'll isolate the vocals, detect each note,
                 and hand you back a MIDI file you can open in any DAW.
               </p>
-              <Dropzone onFile={handleFile} />
+              <Dropzone
+                onFile={handleFile}
+                allowedExts={config?.allowed_extensions}
+                maxSizeMb={config?.max_file_size_mb}
+              />
             </section>
           )}
 

@@ -1,24 +1,30 @@
 import { useCallback, useRef, useState } from 'react';
 
-const ALLOWED_EXTS = ['.mp3', '.wav', '.flac', '.ogg'];
+// Fallbacks used until the backend's /config arrives (or if it's unreachable).
+const DEFAULT_ALLOWED_EXTS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a'];
+const DEFAULT_MAX_SIZE_MB = 50;
 
 type Props = {
   onFile: (file: File) => void;
   disabled?: boolean;
+  allowedExts?: string[];
+  maxSizeMb?: number;
 };
 
-export function Dropzone({ onFile, disabled }: Props) {
+export function Dropzone({ onFile, disabled, allowedExts, maxSizeMb }: Props) {
+  const exts = allowedExts ?? DEFAULT_ALLOWED_EXTS;
+  const maxSize = maxSizeMb ?? DEFAULT_MAX_SIZE_MB;
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const validate = (file: File): string | null => {
     const lower = file.name.toLowerCase();
-    if (!ALLOWED_EXTS.some((ext) => lower.endsWith(ext))) {
-      return `Unsupported file type. Allowed: ${ALLOWED_EXTS.join(', ')}`;
+    if (!exts.some((ext) => lower.endsWith(ext))) {
+      return `Unsupported file type. Allowed: ${exts.join(', ')}`;
     }
-    if (file.size > 50 * 1024 * 1024) {
-      return 'File too large. Max 50 MB.';
+    if (file.size > maxSize * 1024 * 1024) {
+      return `File too large. Max ${maxSize} MB.`;
     }
     return null;
   };
@@ -83,7 +89,7 @@ export function Dropzone({ onFile, disabled }: Props) {
         <input
           ref={inputRef}
           type="file"
-          accept={ALLOWED_EXTS.join(',')}
+          accept={exts.join(',')}
           onChange={onChange}
           hidden
           disabled={disabled}
@@ -102,7 +108,7 @@ export function Dropzone({ onFile, disabled }: Props) {
           or <span className="dropzone-link">click to browse</span>
         </div>
         <div className="dropzone-meta">
-          {ALLOWED_EXTS.join(' · ')} — up to 50 MB
+          {exts.join(' · ')} — up to {maxSize} MB
         </div>
       </div>
       {error && <div className="error-banner">{error}</div>}

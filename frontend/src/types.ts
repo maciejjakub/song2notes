@@ -1,3 +1,8 @@
+export type AppConfig = {
+  allowed_extensions: string[];
+  max_file_size_mb: number;
+};
+
 export type Note = {
   start_time_sec: number;
   end_time_sec: number;

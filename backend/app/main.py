@@ -31,11 +31,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.flac', '.ogg'}
-
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+@app.get("/config")
+async def get_config():
+    """Upload constraints, so the frontend doesn't hardcode its own copy."""
+    return {
+        "allowed_extensions": sorted(settings.ALLOWED_EXTENSIONS),
+        "max_file_size_mb": settings.MAX_FILE_SIZE_MB,
+    }
 
 @app.get("/live")
 async def liveness():
@@ -49,10 +55,10 @@ async def readiness():
 async def upload_audio(audio: UploadFile = File(...)):
     # Validate extension
     ext = Path(audio.filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(sorted(settings.ALLOWED_EXTENSIONS))}"
         )
 
     # Validate size
@@ -83,7 +89,7 @@ async def separate(job_id: str):
     # Find the uploaded file. It might have any of the allowed extensions.
     upload_path = Path(settings.UPLOAD_DIR)
     input_file = None
-    for ext in ALLOWED_EXTENSIONS:
+    for ext in settings.ALLOWED_EXTENSIONS:
         potential_file = upload_path / f"{job_id}{ext}"
         if potential_file.exists():
             input_file = potential_file
@@ -110,7 +116,7 @@ async def analyze_audio(
 ):
     # 1. Reuse upload logic
     ext = Path(audio.filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid file type")
 
     audio.file.seek(0, os.SEEK_END)
@@ -200,7 +206,7 @@ async def delete_job(job_id: str, session: Session = Depends(get_session)):
 
     # Best-effort filesystem cleanup
     shutil.rmtree(Path(settings.OUTPUT_DIR) / job_id, ignore_errors=True)
-    for ext in ALLOWED_EXTENSIONS:
+    for ext in settings.ALLOWED_EXTENSIONS:
         upload_file = Path(settings.UPLOAD_DIR) / f"{job_id}{ext}"
         if upload_file.exists():
             upload_file.unlink()

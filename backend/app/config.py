@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     OUTPUT_DIR: str = "../samples/outputs"
     DB_PATH: str = "song2notes.db"
     MAX_FILE_SIZE_MB: int = 50
+    ALLOWED_EXTENSIONS: set[str] = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
 
     class Config:
         env_file = ".env"
