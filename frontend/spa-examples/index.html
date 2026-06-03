@@ -1,0 +1,297 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIDI Waterfall</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  :root{
+    --bg:#0a0c14; --panel:#11131f; --ink:#e8eaf2; --muted:#6b7090;
+    --line:#1d2030; --accent:#5b8cff; --accent2:#ff7eb6;
+    --rh:#5b8cff; --lh:#36d6c3; --glow:rgba(91,140,255,.55);
+    --key-w:#f3f4fb; --key-b:#0e1019;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;-webkit-font-smoothing:antialiased}
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+  body{display:flex;flex-direction:column;align-items:center;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #161a2e 0%, transparent 60%),
+      var(--bg)}
+  .wrap{width:min(880px,94vw);margin:clamp(16px,4vh,40px) auto;display:flex;flex-direction:column;gap:14px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(20px,3.4vw,30px);
+    margin:0;letter-spacing:-.01em}
+  h1 em{font-style:italic;color:var(--accent2)}
+  .sub{color:var(--muted);font-size:12px;letter-spacing:.04em}
+  .stage{position:relative;background:linear-gradient(180deg,#0c0e18,#0a0c14);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:0 30px 80px -40px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03)}
+  canvas{display:block;width:100%}
+  .controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
+  button{font:inherit;font-size:13px;color:var(--ink);background:#191c2c;border:1px solid var(--line);
+    padding:9px 16px;border-radius:10px;cursor:pointer;transition:.15s;letter-spacing:.02em}
+  button:hover{border-color:var(--accent);color:#fff;box-shadow:0 0 0 3px rgba(91,140,255,.12)}
+  button.primary{background:linear-gradient(180deg,#6b97ff,#4f7af0);border-color:transparent;color:#fff;font-weight:500}
+  button.primary:hover{box-shadow:0 8px 24px -8px var(--glow)}
+  .time{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;min-width:84px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;color:var(--muted);font-size:12px}
+  input[type=range]{accent-color:var(--accent);width:120px}
+  .legend{display:flex;gap:16px;color:var(--muted);font-size:11px;letter-spacing:.05em}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:middle;margin-right:6px}
+  .note{color:var(--muted);font-size:11.5px;line-height:1.6;max-width:60ch}
+  code{color:var(--accent2);background:#171a29;padding:1px 5px;border-radius:4px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>MIDI <em>Waterfall</em></h1>
+    <div class="sub" id="meta">loading…</div>
+  </header>
+
+  <div class="stage"><canvas id="c"></canvas></div>
+
+  <div class="controls">
+    <button id="play" class="primary">▶ Play</button>
+    <button id="restart">↺ Restart</button>
+    <span class="time" id="clock">0:00 / 0:00</span>
+    <span class="spd">speed
+      <input id="speed" type="range" min="30" max="150" value="100">
+      <span id="spdval" style="min-width:34px;text-align:right">100%</span>
+    </span>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--rh)"></i>notes (falling)</span>
+    <span><i class="dot" style="background:#fff"></i>hit line = note-on</span>
+  </div>
+
+  <p class="note">
+    Each note is a rectangle. Its <b>x</b> comes from the MIDI pitch (mapped to a key);
+    its <b>y</b> is <code>(note.time − now) × pxPerSec</code>, read fresh from the Web Audio clock every
+    <code>requestAnimationFrame</code>. The bar height is <code>duration × pxPerSec</code>. When a bar reaches the
+    white hit line, that's the exact instant its note sounds — the visual is slaved to the audio clock, never the reverse.
+  </p>
+</div>
+
+<script>
+// ---- embedded MIDI (the uploaded .mid, base64) ----
+const MIDI_B64 = "TVRoZAAAAAYAAQACANxNVHJrAAAAEwD/UQMHoSAA/1gEBAIYCAH/LwBNVHJrAAABDQDAAIEEkDxfgUo8AFQ3WzU3ADA5XYIVOQCEUjleUDkABDtdRjsAADxeVDwAKD5dTz4AYTdchB03AIQDN1x7NwAwOV5uOQBLOlyCGjoAgTRBYYRJPlsAQQBlPgAAQF1HQAA1PFpYPABKPl2BIz4AGzxfTzwAUzlegnI5AIQUPF5mPAAePl+CET4AgXs+XYE9PgB7QWCBCUBeAEEAgQhAACxBXUtBAAk+X4EEPgAjPF6CTjwAgmk1XYEfNQAnN1ldNwA0OVxhOQB7PWA1PQAAPl9YPF8APgCBGjwAgxU8Xmo8ABo6XW46ADU5XoFTOQCBGjRcYTQAADVZhQ80VQA1AHM0AIMQPF1HPAAB/y8A";
+
+// ---- minimal MIDI parser (SMF type 0/1) -> note list ----
+function parseMidi(bytes){
+  let p=0;
+  const u32=()=> (bytes[p++]<<24|bytes[p++]<<16|bytes[p++]<<8|bytes[p++])>>>0;
+  const u16=()=> (bytes[p++]<<8|bytes[p++]);
+  const vlq=()=>{let v=0,b;do{b=bytes[p++];v=(v<<7)|(b&0x7f);}while(b&0x80);return v;};
+  if(String.fromCharCode(...bytes.slice(0,4))!=="MThd") throw new Error("not MIDI");
+  p=4; u32(); u16(); const nTracks=u16(); const tpq=u16();
+  let tempo=500000; // us per quarter (default 120bpm)
+  const notes=[]; let totalTicks=0;
+  for(let t=0;t<nTracks;t++){
+    if(String.fromCharCode(...bytes.slice(p,p+4))!=="MTrk") break;
+    p+=4; const len=u32(); const end=p+len;
+    let tick=0, running=0; const on={};
+    while(p<end){
+      tick+=vlq();
+      let status=bytes[p];
+      if(status<0x80){status=running;} else {p++; running=status;}
+      const type=status&0xf0, ch=status&0x0f;
+      if(status===0xff){ const m=bytes[p++]; const l=vlq();
+        if(m===0x51){ tempo=(bytes[p]<<16|bytes[p+1]<<8|bytes[p+2]); }
+        p+=l;
+      } else if(status===0xf0||status===0xf7){ const l=vlq(); p+=l; }
+      else if(type===0x90){ const n=bytes[p++],v=bytes[p++];
+        if(v>0)(on[ch+"_"+n]=on[ch+"_"+n]||[]).push({tick,v});
+        else closeNote(on,ch,n,tick,tempo,tpq,notes);
+      } else if(type===0x80){ const n=bytes[p++]; p++; closeNote(on,ch,n,tick,tempo,tpq,notes); }
+      else if(type===0xc0||type===0xd0){ p++; }
+      else if(type===0xa0||type===0xb0||type===0xe0){ p+=2; }
+    }
+    totalTicks=Math.max(totalTicks,tick); p=end;
+  }
+  // convert ticks->seconds assuming single tempo (true for this file)
+  const secPerTick=(tempo/1e6)/tpq;
+  notes.forEach(n=>{n.time*=secPerTick; n.duration*=secPerTick;});
+  return {notes, duration: totalTicks*secPerTick};
+}
+function closeNote(on,ch,n,tick,tempo,tpq,notes){
+  const k=ch+"_"+n, arr=on[k]; if(!arr||!arr.length)return;
+  const s=arr.shift();
+  notes.push({midi:n, time:s.tick, duration:Math.max(tick-s.tick,1), velocity:s.v/127});
+}
+
+const b64=atob(MIDI_B64);
+const bytes=new Uint8Array(b64.length); for(let i=0;i<b64.length;i++)bytes[i]=b64.charCodeAt(i);
+const song=parseMidi(bytes);
+
+// ---- keyboard layout: only the pitch range present, padded a little ----
+const lo=Math.min(...song.notes.map(n=>n.midi))-2;
+const hi=Math.max(...song.notes.map(n=>n.midi))+2;
+const isBlack=m=>[1,3,6,8,10].includes(((m%12)+12)%12);
+// build white-key index map so black keys can straddle two whites
+const whites=[]; for(let m=lo;m<=hi;m++) if(!isBlack(m)) whites.push(m);
+const nWhite=whites.length;
+
+// ---- canvas ----
+const cvs=document.getElementById("c"), ctx=cvs.getContext("2d");
+const KEYH=84;          // keyboard height (px, css)
+let W=0,H=0,DPR=1, whiteW=0;
+const PXPS=170;         // pixels per second of fall
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=cvs.clientWidth; H=Math.round(W*0.62); H=Math.max(360,Math.min(H,560));
+  cvs.style.height=H+"px";
+  cvs.width=W*DPR; cvs.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  whiteW=W/nWhite;
+}
+new ResizeObserver(resize).observe(cvs); resize();
+
+// pitch -> x (left), width
+function keyGeom(m){
+  if(!isBlack(m)){ const i=whites.indexOf(m); return {x:i*whiteW, w:whiteW}; }
+  // black key sits between the white below and above
+  const below=m-1; const i=whites.indexOf(below);
+  const bw=whiteW*0.62;
+  return {x:(i+1)*whiteW-bw/2, w:bw, black:true};
+}
+
+const hue = m => 210 + (m-lo)*5;  // subtle gradient across pitch
+
+function draw(now){
+  const lineY=H-KEYH;
+  ctx.clearRect(0,0,W,H);
+
+  // backdrop grid (beats)
+  ctx.strokeStyle="rgba(255,255,255,.03)"; ctx.lineWidth=1;
+  for(let s=Math.ceil(now); (s-now)*PXPS<lineY; s++){
+    const y=lineY-(s-now)*PXPS;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  // falling notes
+  for(const n of song.notes){
+    const top = lineY - (n.time - now)*PXPS;          // future = above line
+    const h   = n.duration*PXPS;
+    const bottom = top + h;
+    if(bottom < -20 || top > lineY) continue;
+    const g=keyGeom(n.midi);
+    const active = now>=n.time && now<=n.time+n.duration;
+    const x=g.x+2, w=Math.max(g.w-4,3);
+    const t=Math.max(top, -40), b=Math.min(bottom, lineY);
+    const radius=Math.min(6,(b-t)/2,w/2);
+    const grad=ctx.createLinearGradient(0,t,0,b);
+    const L=active?68:58, A=0.35+n.velocity*0.55;
+    grad.addColorStop(0,`hsla(${hue(n.midi)},85%,${L+8}%,${A})`);
+    grad.addColorStop(1,`hsla(${hue(n.midi)},80%,${L-6}%,${A})`);
+    ctx.fillStyle=grad;
+    roundRect(ctx,x,t,w,b-t,radius); ctx.fill();
+    if(active){
+      ctx.strokeStyle="#fff"; ctx.lineWidth=1.5;
+      roundRect(ctx,x,t,w,b-t,radius); ctx.stroke();
+    }
+  }
+
+  // hit line
+  const grd=ctx.createLinearGradient(0,lineY-6,0,lineY);
+  grd.addColorStop(0,"rgba(255,255,255,0)"); grd.addColorStop(1,"rgba(255,255,255,.18)");
+  ctx.fillStyle=grd; ctx.fillRect(0,lineY-6,W,6);
+  ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,lineY); ctx.lineTo(W,lineY); ctx.stroke();
+
+  drawKeyboard(now,lineY);
+}
+
+function drawKeyboard(now,lineY){
+  // active set
+  const act=new Set(song.notes.filter(n=>now>=n.time&&now<=n.time+n.duration).map(n=>n.midi));
+  // white keys
+  for(const m of whites){
+    const g=keyGeom(m); const on=act.has(m);
+    ctx.fillStyle= on? `hsl(${hue(m)},85%,66%)` : "var(--key-w)";
+    ctx.fillStyle= on? `hsl(${hue(m)},85%,66%)` : "#eef0fa";
+    ctx.fillRect(g.x,lineY,g.w-1,KEYH);
+    if(on){ ctx.fillStyle=`hsla(${hue(m)},90%,70%,.5)`; ctx.fillRect(g.x,lineY,g.w-1,4);}
+  }
+  // black keys on top
+  for(let m=lo;m<=hi;m++){ if(!isBlack(m))continue;
+    const g=keyGeom(m); const on=act.has(m);
+    ctx.fillStyle= on? `hsl(${hue(m)},85%,58%)` : "#0e1019";
+    ctx.fillRect(g.x,lineY,g.w,KEYH*0.62);
+  }
+  // ledge shadow
+  const sg=ctx.createLinearGradient(0,lineY,0,lineY+8);
+  sg.addColorStop(0,"rgba(0,0,0,.35)"); sg.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=sg; ctx.fillRect(0,lineY,W,8);
+}
+
+function roundRect(c,x,y,w,h,r){c.beginPath();
+  c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+
+// ---- audio (Tone.js sampler-lite: a synth with piano-ish envelope) ----
+let synth, scheduled=false, speed=1;
+function buildSynth(){
+  synth=new Tone.PolySynth(Tone.Synth,{
+    oscillator:{type:"triangle"},
+    envelope:{attack:0.005,decay:0.3,sustain:0.15,release:1.1}
+  }).toDestination();
+  synth.volume.value=-8;
+}
+function schedule(){
+  Tone.Transport.cancel(0);
+  for(const n of song.notes){
+    Tone.Transport.schedule((t)=>{
+      synth.triggerAttackRelease(Tone.Frequency(n.midi,"midi").toFrequency(),
+        Math.max(n.duration/speed,0.05), t, 0.4+n.velocity*0.6);
+    }, n.time/speed);
+  }
+  scheduled=true;
+}
+
+// ---- transport / loop ----
+const playBtn=document.getElementById("play");
+const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+document.getElementById("meta").textContent=
+  `${song.notes.length} notes · ${fmt(song.duration)} · 120bpm · piano`;
+document.getElementById("clock").textContent=`0:00 / ${fmt(song.duration)}`;
+
+let raf;
+function frame(){
+  // Transport time is in (sped-up) seconds; convert back to song seconds for layout
+  const now=Tone.Transport.seconds*speed;
+  draw(now);
+  document.getElementById("clock").textContent=`${fmt(Math.min(now,song.duration))} / ${fmt(song.duration)}`;
+  if(now>=song.duration+0.4){ stop(true); return; }
+  raf=requestAnimationFrame(frame);
+}
+function stop(reset){
+  Tone.Transport.pause();
+  playBtn.textContent="▶ Play";
+  cancelAnimationFrame(raf);
+  if(reset){ Tone.Transport.stop(); Tone.Transport.seconds=0; draw(0);
+    document.getElementById("clock").textContent=`0:00 / ${fmt(song.duration)}`; }
+}
+
+playBtn.onclick=async()=>{
+  await Tone.start();
+  if(!synth) buildSynth();
+  if(!scheduled) schedule();
+  if(Tone.Transport.state==="started"){ stop(false); }
+  else{ Tone.Transport.start(); playBtn.textContent="⏸ Pause"; frame(); }
+};
+document.getElementById("restart").onclick=()=>{ Tone.Transport.stop(); Tone.Transport.seconds=0;
+  if(Tone.Transport.state!=="started" && playBtn.textContent.includes("Pause")){} draw(0);
+  if(playBtn.textContent.includes("Pause")){ Tone.Transport.start(); } };
+
+const sp=document.getElementById("speed");
+sp.oninput=()=>{
+  const wasPlaying=Tone.Transport.state==="started";
+  const songNow=Tone.Transport.seconds*speed;
+  speed=sp.value/100;
+  document.getElementById("spdval").textContent=sp.value+"%";
+  if(scheduled){ schedule(); Tone.Transport.seconds=songNow/speed; } // reschedule at new rate
+};
+
+draw(0);
+</script>

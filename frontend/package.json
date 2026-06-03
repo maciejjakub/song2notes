@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@magenta/music": "^1.23.1",
+    "html-midi-player": "^1.6.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
