@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Dropzone } from './components/Dropzone';
 import { Results } from './components/Results';
 import { HistoryPanel } from './components/HistoryPanel';
+import { ThemeToggle } from './components/ThemeToggle';
 import { analyzeAudio, deleteJob, getJob, listJobs } from './api';
 import type { AnalyzeResponse, JobSummary } from './types';
 import './App.css';
@@ -108,11 +109,14 @@ function App() {
             <div className="brand-tag">Turn vocals into MIDI</div>
           </div>
         </div>
-        {status !== 'idle' && (
-          <button className="btn-secondary" onClick={reset}>
-            New analysis
-          </button>
-        )}
+        <div className="header-actions">
+          {status !== 'idle' && (
+            <button className="btn-secondary" onClick={reset}>
+              New analysis
+            </button>
+          )}
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="app-body">

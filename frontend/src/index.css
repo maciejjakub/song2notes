@@ -1,22 +1,81 @@
-:root {
+/* Dark theme is the default (also applied explicitly via [data-theme='dark']). */
+:root,
+:root[data-theme='dark'] {
   --bg-0: #0a0a16;
   --bg-1: #11122a;
   --surface: rgba(255, 255, 255, 0.04);
   --surface-strong: rgba(255, 255, 255, 0.07);
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
+  --border-hover: rgba(255, 255, 255, 0.24);
   --text: #f4f4f8;
   --text-dim: #a5a5b8;
   --text-faint: #6b6b7e;
   --accent: #7c5cff;
+  --accent-hover: #8e74ff;
   --accent-2: #4ed1ff;
+  --accent-soft: rgba(124, 92, 255, 0.18);
   --danger: #ff6b6b;
   --success: #5cf2a7;
 
+  /* Subtle neutral overlays that should invert between themes. */
+  --overlay-soft: rgba(255, 255, 255, 0.05);
+  --overlay: rgba(255, 255, 255, 0.08);
+  --overlay-hover: rgba(255, 255, 255, 0.1);
+
+  /* On-accent text + heading gradient stops. */
+  --on-accent: #ffffff;
+  --heading-grad-from: #ffffff;
+  --heading-grad-to: #b8b8d0;
+  --note-active-stroke: #ffffff;
+
+  /* Ambient background glow behind everything. */
+  --glow-1: rgba(124, 92, 255, 0.25);
+  --glow-2: rgba(78, 209, 255, 0.18);
+  --glow-3: rgba(124, 92, 255, 0.18);
+
+  color-scheme: dark;
+}
+
+/* Light theme — soft cool-white surfaces with deeper accents for contrast. */
+:root[data-theme='light'] {
+  --bg-0: #f6f7fb;
+  --bg-1: #eef0f8;
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-strong: rgba(255, 255, 255, 0.95);
+  --border: rgba(17, 24, 51, 0.08);
+  --border-strong: rgba(17, 24, 51, 0.16);
+  --border-hover: rgba(17, 24, 51, 0.28);
+  --text: #1a1b30;
+  --text-dim: #555a72;
+  --text-faint: #8a8fa6;
+  --accent: #6d4aff;
+  --accent-hover: #5a37f0;
+  --accent-2: #0aa7e0;
+  --accent-soft: rgba(109, 74, 255, 0.14);
+  --danger: #e5484d;
+  --success: #1f9d63;
+
+  --overlay-soft: rgba(17, 24, 51, 0.04);
+  --overlay: rgba(17, 24, 51, 0.06);
+  --overlay-hover: rgba(17, 24, 51, 0.08);
+
+  --on-accent: #ffffff;
+  --heading-grad-from: #1a1b30;
+  --heading-grad-to: #5a4fd6;
+  --note-active-stroke: #1a1b30;
+
+  --glow-1: rgba(124, 92, 255, 0.16);
+  --glow-2: rgba(10, 167, 224, 0.12);
+  --glow-3: rgba(124, 92, 255, 0.1);
+
+  color-scheme: light;
+}
+
+:root {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color-scheme: dark;
   color: var(--text);
   background: var(--bg-0);
 }
@@ -37,11 +96,12 @@ body,
 body {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 1200px 700px at 20% -10%, rgba(124, 92, 255, 0.25), transparent 60%),
-    radial-gradient(ellipse 1000px 600px at 100% 10%, rgba(78, 209, 255, 0.18), transparent 60%),
-    radial-gradient(ellipse 800px 500px at 60% 110%, rgba(124, 92, 255, 0.18), transparent 60%),
+    radial-gradient(ellipse 1200px 700px at 20% -10%, var(--glow-1), transparent 60%),
+    radial-gradient(ellipse 1000px 600px at 100% 10%, var(--glow-2), transparent 60%),
+    radial-gradient(ellipse 800px 500px at 60% 110%, var(--glow-3), transparent 60%),
     var(--bg-0);
   background-attachment: fixed;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 h1,
