@@ -26,6 +26,8 @@ export interface UseMidiPlayerResult {
   error: Error | null;
   toggle: () => void;
   restart: () => void;
+  /** Jump to an absolute song-time position in seconds. */
+  seek: (seconds: number) => void;
   setSpeed: (multiplier: number) => void;
 }
 
@@ -112,6 +114,13 @@ export function useMidiPlayer(
     engineRef.current?.restart();
   }, []);
 
+  const seek = useCallback((seconds: number) => {
+    engineRef.current?.seek(seconds);
+    // Reflect the jump in display state right away; the throttle would
+    // otherwise leave the readout/slider lagging until the next tick.
+    setCurrentTime(seconds);
+  }, []);
+
   const setSpeed = useCallback((multiplier: number) => {
     engineRef.current?.setSpeed(multiplier);
   }, []);
@@ -126,6 +135,7 @@ export function useMidiPlayer(
     error,
     toggle,
     restart,
+    seek,
     setSpeed,
   };
 }

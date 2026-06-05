@@ -14,7 +14,6 @@ import type {
   MidiSource,
   ParsedSong,
   PlayerEventMap,
-  PlayerNote,
   PlayerOptions,
 } from "./types";
 
@@ -145,6 +144,19 @@ export class MidiPlayer {
     this.draw(0);
     this.emit("time", { currentTime: 0, duration: this.song?.duration ?? 0 });
     if (this.playing) Tone.Transport.start();
+  }
+
+  /** Jump to an absolute position in song-time (seconds), clamped to [0, duration].
+   *  Works whether playing or paused; the visualizer updates immediately. */
+  seek(seconds: number): void {
+    if (!this.song) return;
+    const target = Math.max(0, Math.min(seconds, this.song.duration));
+    // Release anything currently sounding so notes held across the jump don't hang.
+    this.sampler?.releaseAll();
+    // Transport runs in sped-up time; convert song-time -> transport-time.
+    Tone.Transport.seconds = target / this.speed;
+    this.draw(target);
+    this.emit("time", { currentTime: target, duration: this.song.duration });
   }
 
   /** 0.3–1.5 typical. Reschedules at the new rate, preserving position.

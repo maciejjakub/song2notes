@@ -34,10 +34,18 @@ export function MidiPlayerView({ source, options, className }: MidiPlayerViewPro
     error,
     toggle,
     restart,
+    seek,
     setSpeed,
   } = useMidiPlayer(source, options);
 
   const [speedPct, setSpeedPct] = useState(100);
+
+  // While dragging the timeline we show a local value so the playhead's own
+  // updates don't yank the thumb back. `null` means "not scrubbing — follow
+  // playback". We seek live on each move for an immediate scrub preview.
+  const [scrub, setScrub] = useState<number | null>(null);
+  const displayTime = scrub ?? currentTime;
+  const seekable = !loading && !error && !!song && duration > 0;
 
   return (
     <div className={className} style={styles.wrap}>
@@ -45,6 +53,28 @@ export function MidiPlayerView({ source, options, className }: MidiPlayerViewPro
         <canvas ref={canvasRef} style={styles.canvas} />
         {loading && <div style={styles.overlay}>Loading MIDI…</div>}
         {error && <div style={styles.overlay}>⚠ {error.message}</div>}
+      </div>
+
+      <div style={styles.timeline}>
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.01}
+          value={Math.min(displayTime, duration || 0)}
+          disabled={!seekable}
+          aria-label="Seek"
+          style={styles.scrubber}
+          onPointerDown={() => seekable && setScrub(displayTime)}
+          onChange={(e) => {
+            if (!seekable) return;
+            const t = Number(e.target.value);
+            setScrub(t);
+            seek(t); // live preview as you drag
+          }}
+          onPointerUp={() => setScrub(null)}
+          onBlur={() => setScrub(null)}
+        />
       </div>
 
       <div style={styles.controls}>
@@ -56,7 +86,7 @@ export function MidiPlayerView({ source, options, className }: MidiPlayerViewPro
         </button>
 
         <span style={styles.time}>
-          {formatTime(currentTime)} / {formatTime(duration)}
+          {formatTime(displayTime)} / {formatTime(duration)}
         </span>
 
         <label style={styles.speed}>
@@ -98,6 +128,8 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: "hidden",
   },
   canvas: { display: "block", width: "100%" },
+  timeline: { display: "flex", alignItems: "center", padding: "0 4px" },
+  scrubber: { width: "100%", cursor: "pointer", accentColor: "#6b97ff" },
   overlay: {
     position: "absolute",
     inset: 0,
