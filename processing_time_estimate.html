@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>song2notes — Processing Time Estimate</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171c23; --ink:#e8edf2; --muted:#9aa7b4;
+    --grid:#2a313b; --warm:#4cc9f0; --cold:#f7826b; --sep:#9b8cff; --ext:#ffd166;
+    --accent:#4cc9f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}
+  h1{font-size:26px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--panel);border:1px solid var(--grid);border-radius:14px;
+    padding:20px;margin:18px 0}
+  canvas{width:100%;height:auto;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;color:var(--muted);font-size:13px}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:22px;height:3px;border-radius:2px;display:inline-block}
+  .sw.dot{width:11px;height:11px;border-radius:50%}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--grid)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tr.measured td{color:var(--warm)}
+  .tag{font-size:11px;color:var(--muted);font-weight:600}
+  .note{color:var(--muted);font-size:13px;margin-top:10px}
+  code{background:#0c0f13;border:1px solid var(--grid);border-radius:5px;padding:1px 6px;color:#cfe8ff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}}
+  .stat{background:#0c0f13;border:1px solid var(--grid);border-radius:10px;padding:14px}
+  .stat b{display:block;font-size:22px;color:var(--ink)}
+  .stat span{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>song2notes — MP3 length vs. processing time</h1>
+  <p class="sub">Measured on Apple M1 Pro (CPU — no CUDA; Demucs/CREPE do not use MPS here). Pipeline: Demucs <em>htdemucs</em> vocal separation → CREPE <em>full</em> pitch detection (10&nbsp;ms step, Viterbi).</p>
+
+  <div class="grid2">
+    <div class="stat"><b>~1.0×</b><span>realtime, warm steady state (1&nbsp;s processing per 1&nbsp;s of audio)</span></div>
+    <div class="stat"><b>~25 s</b><span>one-time cold-start cost on the first request (TF graph build + warmup)</span></div>
+  </div>
+
+  <div class="card">
+    <canvas id="chart" width="1840" height="980"></canvas>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--cold)"></i> First request (cold start)</span>
+      <span><i class="sw" style="background:var(--warm)"></i> Warm steady state (total)</span>
+      <span><i class="sw" style="background:var(--ext)"></i> CREPE extract (warm)</span>
+      <span><i class="sw" style="background:var(--sep)"></i> Demucs separate (warm)</span>
+      <span><i class="sw dot" style="background:#fff"></i> Measured data points</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>Audio length</th><th>Demucs</th><th>CREPE</th><th>Total (warm)</th><th>First request (cold)</th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <p class="note">Blue rows are <span style="color:var(--warm)">measured</span>; others are extrapolated from the fitted model.
+      Warm total ≈ <code>1.00 × seconds − 2</code>; cold adds ≈ 25 s. Per stage: Demucs ≈ <code>0.35×</code>, CREPE ≈ <code>0.66×</code> realtime.</p>
+  </div>
+</div>
+
+<script>
+// ---- Model -------------------------------------------------------------
+// Fitted from warm measured points (60s, 120s); validated against 30s (cold).
+const sep  = d => 0.3483*d + 1.59;   // Demucs separate (warm)
+const ext  = d => 0.6560*d - 3.53;   // CREPE extract  (warm)
+const warm = d => sep(d) + ext(d);   // ~1.0x realtime
+const COLD = 25.2;                   // one-time first-request overhead
+const cold = d => warm(d) + COLD;
+
+// Measured points: total seconds. 30s run was cold; 60s & 120s warm.
+const measured = [
+  {d:30,  total:53.37, kind:'cold'},
+  {d:60,  total:58.32, kind:'warm'},
+  {d:120, total:118.57,kind:'warm'},
+];
+
+const targets = [30,60,120,180,300];
+const measuredSet = {30:true,60:true,120:true};
+
+// ---- Table -------------------------------------------------------------
+const fmt = s => s>=60 ? `${Math.floor(s/60)}m ${Math.round(s%60)}s` : `${Math.round(s)} s`;
+const tb = document.getElementById('tbody');
+targets.forEach(d=>{
+  const tr=document.createElement('tr');
+  const isM = measuredSet[d];
+  if(isM) tr.className='measured';
+  const label = d<60?`${d} s`:`${d/60} min`;
+  tr.innerHTML =
+    `<td>${label}${isM?' <span class="tag">measured</span>':''}</td>`+
+    `<td>${fmt(sep(d))}</td>`+
+    `<td>${fmt(ext(d))}</td>`+
+    `<td>${fmt(warm(d))}</td>`+
+    `<td>${fmt(cold(d))}</td>`;
+  tb.appendChild(tr);
+});
+
+// ---- Chart (hand-drawn canvas, no dependencies) ------------------------
+const cv=document.getElementById('chart'), g=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+const css=getComputedStyle(document.documentElement);
+const C=n=>css.getPropertyValue(n).trim();
+const M={l:120,r:40,t:40,b:90};
+const xMax=320, yMax=360;            // seconds
+const X=v=>M.l+(v/xMax)*(W-M.l-M.r);
+const Y=v=>H-M.b-(v/yMax)*(H-M.t-M.b);
+
+g.fillStyle=C('--panel'); g.fillRect(0,0,W,H);
+
+// grid + axes
+g.strokeStyle=C('--grid'); g.fillStyle=C('--muted');
+g.lineWidth=1; g.font='22px -apple-system,sans-serif';
+g.textAlign='center'; g.textBaseline='top';
+for(let x=0;x<=xMax;x+=30){
+  g.globalAlpha=x%60?0.4:0.8; g.beginPath();
+  g.moveTo(X(x),M.t); g.lineTo(X(x),H-M.b); g.stroke(); g.globalAlpha=1;
+  if(x%60===0||x===30){ g.fillText(x<60?x+'s':(x/60)+'m', X(x), H-M.b+12); }
+}
+g.textAlign='right'; g.textBaseline='middle';
+for(let y=0;y<=yMax;y+=60){
+  g.globalAlpha=y?0.4:0.8; g.beginPath();
+  g.moveTo(M.l,Y(y)); g.lineTo(W-M.r,Y(y)); g.stroke(); g.globalAlpha=1;
+  g.fillText(y<60?y+'s':(y/60)+'m', M.l-14, Y(y));
+}
+// axis titles
+g.save(); g.fillStyle=C('--ink'); g.font='24px -apple-system,sans-serif';
+g.textAlign='center'; g.textBaseline='bottom';
+g.fillText('Audio length', (M.l+W-M.r)/2, H-18);
+g.translate(34,(M.t+H-M.b)/2); g.rotate(-Math.PI/2);
+g.fillText('Processing time', 0, 0); g.restore();
+
+function line(fn,color,width,dash){
+  g.strokeStyle=color; g.lineWidth=width; g.setLineDash(dash||[]);
+  g.beginPath();
+  for(let d=0;d<=xMax;d+=2){ const y=fn(d); d===0?g.moveTo(X(d),Y(y)):g.lineTo(X(d),Y(y)); }
+  g.stroke(); g.setLineDash([]);
+}
+// filled bands for the two stages (stacked, warm)
+g.fillStyle='rgba(155,140,255,0.16)';
+g.beginPath(); g.moveTo(X(0),Y(0));
+for(let d=0;d<=xMax;d+=2)g.lineTo(X(d),Y(sep(d)));
+g.lineTo(X(xMax),Y(0)); g.closePath(); g.fill();
+
+line(d=>Math.max(0,sep(d)), C('--sep'),3);
+line(d=>Math.max(0,sep(d)+ (ext(d)>0?ext(d):0)), C('--ext'),2,[7,6]); // extract atop (=warm total essentially)
+line(d=>Math.max(0,warm(d)), C('--warm'),5);
+line(d=>cold(d), C('--cold'),3,[10,7]);
+
+// equal-speed reference (1x realtime)
+g.strokeStyle='rgba(255,255,255,0.18)'; g.lineWidth=1.5; g.setLineDash([3,7]);
+g.beginPath(); g.moveTo(X(0),Y(0)); g.lineTo(X(xMax),Y(xMax)); g.stroke(); g.setLineDash([]);
+g.fillStyle='rgba(255,255,255,0.4)'; g.font='20px -apple-system,sans-serif';
+g.textAlign='left'; g.textBaseline='bottom';
+g.fillText('1× realtime', X(300)+6, Y(300));
+
+// measured points
+measured.forEach(p=>{
+  g.beginPath(); g.arc(X(p.d),Y(p.total),9,0,7); g.fillStyle='#fff'; g.fill();
+  g.lineWidth=3; g.strokeStyle=p.kind==='cold'?C('--cold'):C('--warm'); g.stroke();
+});
+// extrapolated estimate markers (180, 300)
+[180,300].forEach(d=>{
+  g.beginPath(); g.arc(X(d),Y(warm(d)),7,0,7);
+  g.fillStyle=C('--warm'); g.fill();
+  g.beginPath(); g.arc(X(d),Y(cold(d)),6,0,7);
+  g.fillStyle=C('--cold'); g.fill();
+});
+</script>
+</body>
+</html>

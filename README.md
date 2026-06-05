@@ -83,3 +83,16 @@ curl "http://127.0.0.1:8000/download/<job_id>/midi" --output output.mid
 ```bash
 curl "http://127.0.0.1:8000/jobs/<job_id>"
 ```
+
+### Download audio from YT
+
+```bash
+pytubefix -a -t $target-dir $yt-link
+```
+
+### Debug mode
+
+Debug mode exposes separated vocals as conditionally rendered div exposing backend endpoint
+```bash
+echo "VITE_DEBUG_VOCALS=true" > frontend/.env.local
+```
