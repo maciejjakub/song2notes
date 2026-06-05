@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { AnalyzeResponse } from '../types';
-import { midiDownloadUrl } from '../api';
+import { DEBUG_VOCALS, midiDownloadUrl, vocalsUrl } from '../api';
 import { MidiPlayerView } from "./midi-player";
 
 type Props = {
@@ -130,6 +130,22 @@ export function Results({ result, fileName, onReset }: Props) {
           <div className="download-sub">{result.job_id}.mid</div>
         </div>
       </a>
+
+      {DEBUG_VOCALS && (
+        <div className="debug-vocals">
+          <div className="debug-vocals-label">
+            Debug: separated vocals (demucs)
+          </div>
+          <audio controls preload="none" src={vocalsUrl(result.job_id)} />
+          <a
+            className="debug-vocals-download"
+            href={vocalsUrl(result.job_id)}
+            download={`${result.job_id}-vocals.wav`}
+          >
+            Download stem
+          </a>
+        </div>
+      )}
 
       <div className="notes-section">
         <div className="notes-section-title">Notes</div>

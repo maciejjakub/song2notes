@@ -2,6 +2,13 @@ import type { AnalyzeResponse, AppConfig, JobDetail, JobSummary } from './types'
 
 export const API_BASE = 'http://127.0.0.1:8000';
 
+/**
+ * Debug-only: when enabled (build-time env var VITE_DEBUG_VOCALS=true), the
+ * Results view exposes a player for the demucs-separated vocal stem, so we can
+ * hear whether separation went wrong on a given sample. Not surfaced to end users.
+ */
+export const DEBUG_VOCALS = import.meta.env.VITE_DEBUG_VOCALS === 'true';
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = `Request failed with status ${res.status}`;
@@ -45,4 +52,8 @@ export async function deleteJob(jobId: string): Promise<void> {
 
 export function midiDownloadUrl(path: string): string {
   return `${API_BASE}${path}`;
+}
+
+export function vocalsUrl(jobId: string): string {
+  return `${API_BASE}/download/${jobId}/vocals`;
 }
