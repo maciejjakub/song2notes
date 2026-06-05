@@ -12,3 +12,5 @@ tensorflow
 pretty_midi
 librosa
 torchcodec
+pytubefix
+soundfile

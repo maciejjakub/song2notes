@@ -1,4 +1,10 @@
-import type { AnalyzeResponse, AppConfig, JobDetail, JobSummary } from './types';
+import type {
+  AnalyzeResponse,
+  AppConfig,
+  JobDetail,
+  JobSummary,
+  YouTubeSource,
+} from './types';
 
 export const API_BASE = 'http://127.0.0.1:8000';
 
@@ -8,6 +14,13 @@ export const API_BASE = 'http://127.0.0.1:8000';
  * hear whether separation went wrong on a given sample. Not surfaced to end users.
  */
 export const DEBUG_VOCALS = import.meta.env.VITE_DEBUG_VOCALS === 'true';
+
+/**
+ * Feature flag (build-time env var VITE_ENABLE_YT_IMPORT=true): shows the
+ * "import from YouTube" panel under the dropzone — fetch a video's audio, slice
+ * it, then run the chosen segment through analysis.
+ */
+export const ENABLE_YT_IMPORT = import.meta.env.VITE_ENABLE_YT_IMPORT === 'true';
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -56,4 +69,31 @@ export function midiDownloadUrl(path: string): string {
 
 export function vocalsUrl(jobId: string): string {
   return `${API_BASE}/download/${jobId}/vocals`;
+}
+
+export async function youtubeDownload(url: string): Promise<YouTubeSource> {
+  const res = await fetch(`${API_BASE}/youtube/download`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  return handle<YouTubeSource>(res);
+}
+
+export function youtubeAudioUrl(audioUrl: string): string {
+  return `${API_BASE}${audioUrl}`;
+}
+
+export async function youtubeAnalyze(params: {
+  source_id: string;
+  start_sec: number;
+  end_sec: number;
+  title?: string;
+}): Promise<AnalyzeResponse> {
+  const res = await fetch(`${API_BASE}/youtube/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  return handle<AnalyzeResponse>(res);
 }

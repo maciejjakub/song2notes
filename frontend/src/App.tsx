@@ -3,7 +3,16 @@ import { Dropzone } from './components/Dropzone';
 import { Results } from './components/Results';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
-import { analyzeAudio, deleteJob, getConfig, getJob, listJobs } from './api';
+import { YouTubeImport } from './components/youtube/YouTubeImport';
+import {
+  analyzeAudio,
+  deleteJob,
+  ENABLE_YT_IMPORT,
+  getConfig,
+  getJob,
+  listJobs,
+  youtubeAnalyze,
+} from './api';
 import type { AnalyzeResponse, AppConfig, JobSummary } from './types';
 import './App.css';
 
@@ -49,6 +58,29 @@ function App() {
     setActiveJobId(null);
     try {
       const res = await analyzeAudio(file);
+      setResult(res);
+      setActiveJobId(res.job_id);
+      setStatus('done');
+      refreshJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setStatus('error');
+    }
+  };
+
+  const handleYouTubeAnalyze = async (params: {
+    source_id: string;
+    start_sec: number;
+    end_sec: number;
+    title?: string;
+  }) => {
+    setFileName(params.title ?? 'YouTube audio');
+    setStatus('processing');
+    setError(null);
+    setResult(null);
+    setActiveJobId(null);
+    try {
+      const res = await youtubeAnalyze(params);
       setResult(res);
       setActiveJobId(res.job_id);
       setStatus('done');
@@ -148,6 +180,9 @@ function App() {
                 allowedExts={config?.allowed_extensions}
                 maxSizeMb={config?.max_file_size_mb}
               />
+              {ENABLE_YT_IMPORT && (
+                <YouTubeImport onAnalyze={handleYouTubeAnalyze} />
+              )}
             </section>
           )}
 

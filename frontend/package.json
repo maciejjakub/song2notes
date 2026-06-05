@@ -13,7 +13,8 @@
     "@magenta/music": "^1.23.1",
     "html-midi-player": "^1.6.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "wavesurfer.js": "^7.12.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

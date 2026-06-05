@@ -11,6 +11,13 @@ export type Note = {
   velocity: number;
 };
 
+export type YouTubeSource = {
+  source_id: string;
+  title: string;
+  duration_sec: number;
+  audio_url: string;
+};
+
 export type AnalyzeResponse = {
   job_id: string;
   status: string;

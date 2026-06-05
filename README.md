@@ -84,11 +84,19 @@ curl "http://127.0.0.1:8000/download/<job_id>/midi" --output output.mid
 curl "http://127.0.0.1:8000/jobs/<job_id>"
 ```
 
-### Download audio from YT
+### Import audio from YouTube (feature flag)
+
+A feature-flagged panel under the dropzone lets you paste a YouTube URL, fetch
+its audio (via the `pytubefix` library), slice it on a waveform, and send the
+chosen segment through the standard analysis pipeline.
 
 ```bash
-pytubefix -a -t $target-dir $yt-link
+echo "VITE_ENABLE_YT_IMPORT=true" >> frontend/.env.local
 ```
+
+Backend endpoints: `POST /youtube/download`, `GET /youtube/audio/{source_id}`,
+`POST /youtube/analyze`. Videos longer than `MAX_YOUTUBE_DURATION_SEC` (default
+900s) are rejected.
 
 ### Debug mode
 

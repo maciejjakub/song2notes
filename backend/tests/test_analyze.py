@@ -16,7 +16,7 @@ def setup_dirs():
 
 def test_analyze_success():
     # Ensure test file exists
-    test_file_path = Path("samples") / "test.mp3"
+    test_file_path = Path("..") / "samples" / "test.mp3"
     assert test_file_path.exists()
     
     # We must patch the pipeline to avoid running actual ML models during unit tests
@@ -27,7 +27,8 @@ def test_analyze_success():
             mock_extract.return_value = {
                 "midi_path": str(Path(settings.OUTPUT_DIR) / "mock" / "output.mid"),
                 "notes": [{"start_time_sec": 0.0, "end_time_sec": 1.0, "pitch_midi": 60, "pitch_name": "C4", "velocity": 100}],
-                "note_count": 1
+                "note_count": 1,
+                "note_name": ["C4"],
             }
             
             with open(test_file_path, "rb") as f:
@@ -40,7 +41,7 @@ def test_analyze_success():
     assert "midi_download_url" in data
 
 def test_analyze_failure_pipeline():
-    test_file_path = Path("samples") / "test.mp3"
+    test_file_path = Path("..") / "samples" / "test.mp3"
     
     # Mock failure in pipeline
     with patch("app.main.separate_vocals", side_effect=RuntimeError("Demucs failed")):
