@@ -6,7 +6,13 @@ import type {
   YouTubeSource,
 } from './types';
 
-export const API_BASE = 'http://127.0.0.1:8000';
+// Empty = same-origin: API calls become relative paths (e.g. /jobs) that the
+// browser resolves against the page's own origin, then Vite's dev proxy (see
+// vite.config.ts) forwards them to FastAPI. This keeps everything same-origin
+// (no CORS) and host-agnostic, so the app works from localhost or a phone on
+// the LAN with no code change. In production, serve behind a reverse proxy that
+// forwards the same prefixes to the backend.
+export const API_BASE = '';
 
 /**
  * Debug-only: when enabled (build-time env var VITE_DEBUG_VOCALS=true), the
