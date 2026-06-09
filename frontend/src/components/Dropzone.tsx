@@ -71,6 +71,7 @@ export function Dropzone({ onFile, disabled, allowedExts, maxSizeMb }: Props) {
   };
 
   return (
+    // This should be a button instead of a div
     <div className="dropzone-wrap">
       <div
         className={`dropzone${isDragging ? ' dragging' : ''}${disabled ? ' disabled' : ''}`}
@@ -86,6 +87,7 @@ export function Dropzone({ onFile, disabled, allowedExts, maxSizeMb }: Props) {
           }
         }}
       >
+        {/* this should have label */}
         <input
           ref={inputRef}
           type="file"

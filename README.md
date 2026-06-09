@@ -104,3 +104,18 @@ Debug mode exposes separated vocals as conditionally rendered div exposing backe
 ```bash
 echo "VITE_DEBUG_VOCALS=true" > frontend/.env.local
 ```
+
+### Vocal separation models
+
+Two different vocal separation models are now on feature branches
+```
+exp/sep-mdx-voc-ft
+exp/sep-roformer
+```
+
+To switch to a different model
+
+```
+git checkout exp/sep-mdx-voc-ft
+cd backend && uvicorn app.main:app --reload
+```
