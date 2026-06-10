@@ -117,9 +117,18 @@ export function MidiPlayerView({ source, options, className }: MidiPlayerViewPro
 }
 
 // Inline styles keep this file drop-in with zero CSS setup.
-// Replace with your own classes / Tailwind / CSS modules as you like.
+// Chrome colors read `--mp-*` CSS variables with dark fallbacks, so the host
+// app can re-theme the controls (define the vars) without this component
+// knowing how the app's theming works. The stage/overlay stay dark on purpose:
+// the canvas is a media surface and its drawing is tuned for a dark backdrop.
 const styles: Record<string, React.CSSProperties> = {
-  wrap: { display: "flex", flexDirection: "column", gap: 12, width: "100%", color: "#e8eaf2" },
+  wrap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    width: "100%",
+    color: "var(--mp-text, #e8eaf2)",
+  },
   stage: {
     position: "relative",
     background: "linear-gradient(180deg,#0c0e18,#0a0c14)",
@@ -129,7 +138,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   canvas: { display: "block", width: "100%" },
   timeline: { display: "flex", alignItems: "center", padding: "0 4px" },
-  scrubber: { width: "100%", cursor: "pointer", accentColor: "#6b97ff" },
+  scrubber: { width: "100%", cursor: "pointer", accentColor: "var(--mp-accent, #6b97ff)" },
   overlay: {
     position: "absolute",
     inset: 0,
@@ -144,8 +153,8 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 14,
     flexWrap: "wrap",
-    background: "#11131f",
-    border: "1px solid #1d2030",
+    background: "var(--mp-controls-bg, #11131f)",
+    border: "1px solid var(--mp-border, #1d2030)",
     borderRadius: 14,
     padding: "12px 16px",
     font: "13px ui-monospace, monospace",
@@ -161,14 +170,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   btn: {
     font: "inherit",
-    color: "#e8eaf2",
-    background: "#191c2c",
-    border: "1px solid #1d2030",
+    color: "var(--mp-text, #e8eaf2)",
+    background: "var(--mp-btn-bg, #191c2c)",
+    border: "1px solid var(--mp-border, #1d2030)",
     padding: "9px 16px",
     borderRadius: 10,
     cursor: "pointer",
   },
-  time: { color: "#6b7090", fontVariantNumeric: "tabular-nums", minWidth: 84 },
-  speed: { display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", color: "#6b7090" },
-  meta: { color: "#6b7090", font: "11.5px ui-monospace, monospace", letterSpacing: "0.04em" },
+  time: {
+    color: "var(--mp-text-dim, #6b7090)",
+    fontVariantNumeric: "tabular-nums",
+    minWidth: 84,
+  },
+  speed: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: "auto",
+    color: "var(--mp-text-dim, #6b7090)",
+  },
+  meta: {
+    color: "var(--mp-text-dim, #6b7090)",
+    font: "11.5px ui-monospace, monospace",
+    letterSpacing: "0.04em",
+  },
 };

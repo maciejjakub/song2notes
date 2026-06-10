@@ -69,6 +69,15 @@
   --glow-2: rgba(10, 167, 224, 0.12);
   --glow-3: rgba(124, 92, 255, 0.1);
 
+  /* MIDI player chrome (controls bar, text). Only set here: in dark mode the
+     component's own fallbacks apply. The canvas stage stays dark by design. */
+  --mp-text: var(--text);
+  --mp-text-dim: var(--text-dim);
+  --mp-controls-bg: var(--surface-strong);
+  --mp-btn-bg: var(--overlay);
+  --mp-border: var(--border-strong);
+  --mp-accent: var(--accent);
+
   color-scheme: light;
 }
 
