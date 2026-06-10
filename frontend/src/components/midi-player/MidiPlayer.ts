@@ -297,8 +297,8 @@ export class MidiPlayer {
 
     // falling notes
     for (const n of this.song.notes) {
-      const top = lineY - (n.time - now) * this.pxPerSec;
-      const bottom = top + n.duration * this.pxPerSec;
+      const bottom = lineY - (n.time - now) * this.pxPerSec;
+      const top = bottom - n.duration * this.pxPerSec;
       if (bottom < -40) continue; // entirely above the canvas — not visible yet
       if (top > lineY) continue; // already past the hit line (below it) — skip, but
       // don't break: later notes are sorted *higher* up and are still falling.
