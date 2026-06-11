@@ -191,12 +191,15 @@ def _write_midi(notes, path):
     pm.write(path)
 
 
-def separate_vocals(input_path: Path) -> Path:
+def separate_vocals(input_path: Path, separator_name: str) -> Path:
     job_id = input_path.stem
+    if separator_name not in settings.SEPARATOR_MODELS:
+        raise ValueError(f"Unknown separation model: {separator_name}")
+    model_file = settings.SEPARATOR_MODELS[separator_name]["file"]
     # Mirror the previous demucs layout (OUTPUT_DIR/<name>/<job_id>/vocals.wav)
-    # so the rest of the app addresses stems the same way, just under the
-    # configured separator name instead of a hardcoded "htdemucs".
-    output_dir = Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id
+    # so the rest of the app addresses stems the same way, keyed by the chosen
+    # separation model instead of a hardcoded "htdemucs".
+    output_dir = Path(settings.OUTPUT_DIR) / separator_name / job_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # We only need the vocal stem for pitch detection. output_single_stem skips
@@ -210,12 +213,12 @@ def separate_vocals(input_path: Path) -> Path:
     )
 
     try:
-        separator.load_model(model_filename=settings.SEPARATOR_MODEL)
+        separator.load_model(model_filename=model_file)
         produced = separator.separate(
             str(input_path), custom_output_names={"vocals": "vocals"}
         )
     except Exception as e:
-        raise RuntimeError(f"Vocal separation failed ({settings.SEPARATOR_MODEL}): {e}")
+        raise RuntimeError(f"Vocal separation failed ({model_file}): {e}")
 
     vocals_path = output_dir / produced[0]
     if not vocals_path.exists():

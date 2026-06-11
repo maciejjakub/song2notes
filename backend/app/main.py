@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 import librosa
 import soundfile as sf
 from pytubefix import YouTube
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
@@ -41,11 +41,26 @@ async def health_check():
 
 @app.get("/config")
 async def get_config():
-    """Upload constraints, so the frontend doesn't hardcode its own copy."""
+    """Upload constraints and model choices, so the frontend doesn't hardcode its own copy."""
     return {
         "allowed_extensions": sorted(settings.ALLOWED_EXTENSIONS),
         "max_file_size_mb": settings.MAX_FILE_SIZE_MB,
+        "separator_models": [
+            {"key": key, "label": entry["label"]}
+            for key, entry in settings.SEPARATOR_MODELS.items()
+        ],
+        "default_separator": settings.DEFAULT_SEPARATOR,
     }
+
+
+def _resolve_separator(model: str | None) -> str:
+    """Validate a client-supplied separation-model key, defaulting when omitted."""
+    if model is None:
+        return settings.DEFAULT_SEPARATOR
+    if model not in settings.SEPARATOR_MODELS:
+        valid = ", ".join(settings.SEPARATOR_MODELS)
+        raise HTTPException(status_code=400, detail=f"Unknown model '{model}'. Valid models: {valid}")
+    return model
 
 @app.get("/live")
 async def liveness():
@@ -55,16 +70,17 @@ async def liveness():
 async def readiness():
     return {"status": "ready"}
 
-def _run_pipeline(input_path: Path, original_filename: str, session: Session) -> dict:
+def _run_pipeline(input_path: Path, original_filename: str, session: Session, separator: str) -> dict:
     """Separate vocals, extract notes, persist the job. Shared by every entry
     point that ends up with an audio file on disk (direct upload, YouTube slice).
 
     `input_path.stem` is used as the job id because separate_vocals/extract_notes
     derive their output directories from it — callers must name the file accordingly.
+    `separator` must be a validated settings.SEPARATOR_MODELS key (see _resolve_separator).
     """
     job_id = input_path.stem
     try:
-        vocals_path = separate_vocals(input_path)
+        vocals_path = separate_vocals(input_path, separator)
         analysis_result = extract_notes(vocals_path, job_id)
 
         notes = analysis_result["notes"]
@@ -79,6 +95,7 @@ def _run_pipeline(input_path: Path, original_filename: str, session: Session) ->
             duration_sec=duration_sec,
             midi_path=midi_path,
             notes_json=json.dumps(notes),
+            separator_model=separator,
         )
         session.add(job)
         session.commit()
@@ -90,12 +107,13 @@ def _run_pipeline(input_path: Path, original_filename: str, session: Session) ->
             "notes": notes,
             "note_name": analysis_result["note_name"],
             "tuning_offset_semitones": analysis_result.get("tuning_offset_semitones"),
+            "separator_model": separator,
             "midi_download_url": f"/download/{job_id}/midi"
         }
     except Exception as e:
         # Cleanup on failure
         shutil.rmtree(Path(settings.OUTPUT_DIR) / job_id, ignore_errors=True)
-        shutil.rmtree(Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id, ignore_errors=True)
+        shutil.rmtree(Path(settings.OUTPUT_DIR) / separator / job_id, ignore_errors=True)
         if input_path.exists():
             os.remove(input_path)
         raise HTTPException(status_code=500, detail=str(e))
@@ -104,8 +122,10 @@ def _run_pipeline(input_path: Path, original_filename: str, session: Session) ->
 @app.post("/analyze", response_model=dict)
 async def analyze_audio(
     audio: UploadFile = File(...),
+    model: str | None = Form(None),
     session: Session = Depends(get_session),
 ):
+    separator = _resolve_separator(model)
     ext = Path(audio.filename).suffix.lower()
     if ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid file type")
@@ -122,7 +142,7 @@ async def analyze_audio(
     with open(upload_path, "wb") as buffer:
         shutil.copyfileobj(audio.file, buffer)
 
-    return _run_pipeline(upload_path, original_filename, session)
+    return _run_pipeline(upload_path, original_filename, session, separator)
 
 @app.get("/download/{job_id}/midi")
 async def download_midi(job_id: str):
@@ -132,14 +152,19 @@ async def download_midi(job_id: str):
     return FileResponse(midi_path, media_type="audio/midi", filename=f"{job_id}.mid")
 
 @app.get("/download/{job_id}/vocals")
-async def download_vocals(job_id: str):
+async def download_vocals(job_id: str, session: Session = Depends(get_session)):
     """Serve the separated vocal stem produced during /analyze.
 
     Debug aid: lets the frontend (in debug mode) play back the isolated vocals
     so we can hear whether separation, not pitch detection, is the culprit when
     a transcription looks wrong. The file persists on disk after analysis.
     """
-    vocals_path = Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id / "vocals.wav"
+    job = session.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    # Rows predating model selection were produced by the old demucs pipeline,
+    # which wrote stems under the same "htdemucs" subdir the registry key maps to.
+    vocals_path = Path(settings.OUTPUT_DIR) / (job.separator_model or "htdemucs") / job_id / "vocals.wav"
     if not vocals_path.exists():
         raise HTTPException(status_code=404, detail="Vocals not found")
     return FileResponse(vocals_path, media_type="audio/wav", filename=f"{job_id}-vocals.wav")
@@ -210,6 +235,7 @@ async def youtube_analyze(
     payload: YouTubeAnalyzeRequest,
     session: Session = Depends(get_session),
 ):
+    separator = _resolve_separator(payload.model)
     source_path = _youtube_source_path(payload.source_id)
     if not source_path.exists():
         raise HTTPException(status_code=404, detail="Source audio not found")
@@ -234,7 +260,7 @@ async def youtube_analyze(
         raise HTTPException(status_code=500, detail=f"Failed to trim audio: {e}")
 
     original_filename = f"{payload.title or 'youtube'}.wav"
-    return _run_pipeline(trimmed_path, original_filename, session)
+    return _run_pipeline(trimmed_path, original_filename, session, separator)
 
 
 @app.get("/jobs", response_model=list[JobSummary])
@@ -256,6 +282,7 @@ async def get_job(job_id: str, session: Session = Depends(get_session)):
         "notes": json.loads(job.notes_json),
         "tuning_offset_semitones": job.tuning_offset_semitones,
         "duration_sec": job.duration_sec,
+        "separator_model": job.separator_model,
         "midi_download_url": f"/download/{job.id}/midi",
     }
 
@@ -267,9 +294,10 @@ async def delete_job(job_id: str, session: Session = Depends(get_session)):
 
     # Best-effort filesystem cleanup
     shutil.rmtree(Path(settings.OUTPUT_DIR) / job_id, ignore_errors=True)
-    # The separator writes stems under <SEPARATOR_NAME>/<job_id>/ — clean that too,
-    # otherwise vocals.wav is orphaned on disk after the job is deleted.
-    shutil.rmtree(Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id, ignore_errors=True)
+    # The separator writes stems under <separator_model>/<job_id>/ — clean that too,
+    # otherwise vocals.wav is orphaned on disk after the job is deleted. Legacy
+    # rows (NULL separator_model) were written by demucs under htdemucs/.
+    shutil.rmtree(Path(settings.OUTPUT_DIR) / (job.separator_model or "htdemucs") / job_id, ignore_errors=True)
     for ext in settings.ALLOWED_EXTENSIONS:
         upload_file = Path(settings.UPLOAD_DIR) / f"{job_id}{ext}"
         if upload_file.exists():

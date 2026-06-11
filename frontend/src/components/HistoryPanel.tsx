@@ -48,6 +48,9 @@ export function HistoryPanel({ jobs, loading, activeJobId, onSelect, onDelete }:
                   <span>{job.note_count} notes</span>
                   <span className="history-dot">·</span>
                   <span>{formatDate(job.created_at)}</span>
+                  <span className="history-model-chip" title="Vocal separation model">
+                    {job.separator_model ?? 'htdemucs'}
+                  </span>
                 </div>
               </button>
               <button

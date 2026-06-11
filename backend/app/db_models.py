@@ -13,6 +13,9 @@ class Job(SQLModel, table=True):
     duration_sec: float
     midi_path: str
     notes_json: str
+    # Registry key from settings.SEPARATOR_MODELS. NULL on rows that predate
+    # model selection — those were produced by the original demucs htdemucs path.
+    separator_model: Optional[str] = None
 
 
 class JobSummary(SQLModel):
@@ -23,3 +26,4 @@ class JobSummary(SQLModel):
     note_count: int
     tuning_offset_semitones: Optional[float] = None
     duration_sec: float
+    separator_model: Optional[str] = None

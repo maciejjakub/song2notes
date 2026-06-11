@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Dropzone } from './components/Dropzone';
+import { ModelSelect } from './components/ModelSelect';
 import { Results } from './components/Results';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -28,6 +29,8 @@ function App() {
   const [jobsLoading, setJobsLoading] = useState(true);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
+  // Separation model registry key; synced to the backend default once /config loads.
+  const [model, setModel] = useState<string>('mdx_voc_ft');
 
   const refreshJobs = useCallback(async () => {
     try {
@@ -46,7 +49,10 @@ function App() {
 
   useEffect(() => {
     getConfig()
-      .then(setConfig)
+      .then((cfg) => {
+        setConfig(cfg);
+        if (cfg.default_separator) setModel(cfg.default_separator);
+      })
       .catch((err) => console.error('Failed to load config; using defaults', err));
   }, []);
 
@@ -57,7 +63,7 @@ function App() {
     setResult(null);
     setActiveJobId(null);
     try {
-      const res = await analyzeAudio(file);
+      const res = await analyzeAudio(file, model);
       setResult(res);
       setActiveJobId(res.job_id);
       setStatus('done');
@@ -80,7 +86,7 @@ function App() {
     setResult(null);
     setActiveJobId(null);
     try {
-      const res = await youtubeAnalyze(params);
+      const res = await youtubeAnalyze({ ...params, model });
       setResult(res);
       setActiveJobId(res.job_id);
       setStatus('done');
@@ -105,6 +111,7 @@ function App() {
         notes: job.notes,
         note_name: job.notes.map((n) => n.pitch_name),
         tuning_offset_semitones: job.tuning_offset_semitones,
+        separator_model: job.separator_model,
         midi_download_url: job.midi_download_url,
       });
       setStatus('done');
@@ -180,6 +187,11 @@ function App() {
                 allowedExts={config?.allowed_extensions}
                 maxSizeMb={config?.max_file_size_mb}
               />
+              <ModelSelect
+                models={config?.separator_models}
+                value={model}
+                onChange={setModel}
+              />
               {ENABLE_YT_IMPORT && (
                 <YouTubeImport onAnalyze={handleYouTubeAnalyze} />
               )}
@@ -214,7 +226,12 @@ function App() {
           )}
 
           {status === 'done' && result && (
-            <Results result={result} fileName={fileName} onReset={reset} />
+            <Results
+              result={result}
+              fileName={fileName}
+              separatorModels={config?.separator_models}
+              onReset={reset}
+            />
           )}
         </main>
       </div>

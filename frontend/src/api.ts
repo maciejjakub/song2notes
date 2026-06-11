@@ -16,8 +16,8 @@ export const API_BASE = '';
 
 /**
  * Debug-only: when enabled (build-time env var VITE_DEBUG_VOCALS=true), the
- * Results view exposes a player for the demucs-separated vocal stem, so we can
- * hear whether separation went wrong on a given sample. Not surfaced to end users.
+ * Results view exposes a player for the separated vocal stem, so we can hear
+ * whether separation went wrong on a given sample. Not surfaced to end users.
  */
 export const DEBUG_VOCALS = import.meta.env.VITE_DEBUG_VOCALS === 'true';
 
@@ -47,9 +47,10 @@ export async function getConfig(): Promise<AppConfig> {
   return handle<AppConfig>(res);
 }
 
-export async function analyzeAudio(file: File): Promise<AnalyzeResponse> {
+export async function analyzeAudio(file: File, model: string): Promise<AnalyzeResponse> {
   const form = new FormData();
   form.append('audio', file);
+  form.append('model', model);
   const res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: form });
   return handle<AnalyzeResponse>(res);
 }
@@ -95,6 +96,7 @@ export async function youtubeAnalyze(params: {
   start_sec: number;
   end_sec: number;
   title?: string;
+  model?: string;
 }): Promise<AnalyzeResponse> {
   const res = await fetch(`${API_BASE}/youtube/analyze`, {
     method: 'POST',

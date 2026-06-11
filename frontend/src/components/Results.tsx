@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
-import type { AnalyzeResponse } from '../types';
+import type { AnalyzeResponse, SeparatorModel } from '../types';
 import { DEBUG_VOCALS, midiDownloadUrl, vocalsUrl } from '../api';
 import { MidiPlayerView } from "./midi-player";
 
 type Props = {
   result: AnalyzeResponse;
   fileName: string;
+  separatorModels?: SeparatorModel[];
   onReset: () => void;
 };
 
@@ -20,8 +21,13 @@ function formatDuration(start: number, end: number): string {
   return `${d.toFixed(2)}s`;
 }
 
-export function Results({ result, fileName, onReset }: Props) {
+export function Results({ result, fileName, separatorModels, onReset }: Props) {
   const downloadHref = midiDownloadUrl(result.midi_download_url);
+  // NULL separator_model = job from before model selection existed (old demucs runs).
+  const modelLabel = result.separator_model
+    ? separatorModels?.find((m) => m.key === result.separator_model)?.label ??
+      result.separator_model
+    : 'htdemucs (legacy)';
   const playerRef = useRef<HTMLElement>(null);
   const waterfallRef = useRef<HTMLElement>(null);
 
@@ -44,7 +50,12 @@ export function Results({ result, fileName, onReset }: Props) {
       <div className="results-header">
         <div>
           <div className="results-title">Transcription complete</div>
-          <div className="results-file">{fileName}</div>
+          <div className="results-file">
+            {fileName}
+            <span className="model-badge" title="Vocal separation model">
+              {modelLabel}
+            </span>
+          </div>
         </div>
         <button className="btn-secondary" onClick={onReset}>
           Analyze another
@@ -134,7 +145,7 @@ export function Results({ result, fileName, onReset }: Props) {
       {DEBUG_VOCALS && (
         <div className="debug-vocals">
           <div className="debug-vocals-label">
-            Debug: separated vocals (demucs)
+            Debug: separated vocals ({modelLabel})
           </div>
           <audio controls preload="none" src={vocalsUrl(result.job_id)} />
           <a

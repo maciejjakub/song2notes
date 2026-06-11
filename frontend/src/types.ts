@@ -1,6 +1,13 @@
+export type SeparatorModel = {
+  key: string;
+  label: string;
+};
+
 export type AppConfig = {
   allowed_extensions: string[];
   max_file_size_mb: number;
+  separator_models: SeparatorModel[];
+  default_separator: string;
 };
 
 export type Note = {
@@ -25,6 +32,8 @@ export type AnalyzeResponse = {
   notes: Note[];
   note_name: string[];
   tuning_offset_semitones: number | null;
+  // null on jobs that predate model selection (old demucs/htdemucs runs)
+  separator_model: string | null;
   midi_download_url: string;
 };
 
@@ -36,6 +45,7 @@ export type JobSummary = {
   note_count: number;
   tuning_offset_semitones: number | null;
   duration_sec: number;
+  separator_model: string | null;
 };
 
 export type JobDetail = {
@@ -47,5 +57,6 @@ export type JobDetail = {
   notes: Note[];
   tuning_offset_semitones: number | null;
   duration_sec: number;
+  separator_model: string | null;
   midi_download_url: string;
 };

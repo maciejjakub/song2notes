@@ -12,3 +12,5 @@ class YouTubeAnalyzeRequest(BaseModel):
     end_sec: float
     # Carried over from the download response so the saved job keeps the video title.
     title: Optional[str] = None
+    # Separation model registry key; None falls back to settings.DEFAULT_SEPARATOR.
+    model: Optional[str] = None
