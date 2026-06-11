@@ -95,7 +95,7 @@ def _run_pipeline(input_path: Path, original_filename: str, session: Session) ->
     except Exception as e:
         # Cleanup on failure
         shutil.rmtree(Path(settings.OUTPUT_DIR) / job_id, ignore_errors=True)
-        shutil.rmtree(Path(settings.OUTPUT_DIR) / "htdemucs" / job_id, ignore_errors=True)
+        shutil.rmtree(Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id, ignore_errors=True)
         if input_path.exists():
             os.remove(input_path)
         raise HTTPException(status_code=500, detail=str(e))
@@ -133,13 +133,13 @@ async def download_midi(job_id: str):
 
 @app.get("/download/{job_id}/vocals")
 async def download_vocals(job_id: str):
-    """Serve the demucs-separated vocal stem produced during /analyze.
+    """Serve the separated vocal stem produced during /analyze.
 
     Debug aid: lets the frontend (in debug mode) play back the isolated vocals
     so we can hear whether separation, not pitch detection, is the culprit when
     a transcription looks wrong. The file persists on disk after analysis.
     """
-    vocals_path = Path(settings.OUTPUT_DIR) / "htdemucs" / job_id / "vocals.wav"
+    vocals_path = Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id / "vocals.wav"
     if not vocals_path.exists():
         raise HTTPException(status_code=404, detail="Vocals not found")
     return FileResponse(vocals_path, media_type="audio/wav", filename=f"{job_id}-vocals.wav")
@@ -267,9 +267,9 @@ async def delete_job(job_id: str, session: Session = Depends(get_session)):
 
     # Best-effort filesystem cleanup
     shutil.rmtree(Path(settings.OUTPUT_DIR) / job_id, ignore_errors=True)
-    # Demucs writes the separated stems under htdemucs/<job_id>/ — clean that too,
+    # The separator writes stems under <SEPARATOR_NAME>/<job_id>/ — clean that too,
     # otherwise vocals.wav is orphaned on disk after the job is deleted.
-    shutil.rmtree(Path(settings.OUTPUT_DIR) / "htdemucs" / job_id, ignore_errors=True)
+    shutil.rmtree(Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id, ignore_errors=True)
     for ext in settings.ALLOWED_EXTENSIONS:
         upload_file = Path(settings.UPLOAD_DIR) / f"{job_id}{ext}"
         if upload_file.exists():

@@ -5,7 +5,7 @@ pydantic-settings
 sqlmodel
 pytest
 httpx
-demucs
+audio-separator[cpu]
 torchaudio
 crepe
 tensorflow

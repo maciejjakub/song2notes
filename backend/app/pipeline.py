@@ -4,7 +4,7 @@ import crepe
 import librosa
 import pretty_midi
 from scipy.ndimage import median_filter
-from demucs.separate import main
+from audio_separator.separator import Separator
 from .config import settings
 
 CONFIDENCE_THRESHOLD = 0.65   # frames below this are treated as silence
@@ -193,22 +193,31 @@ def _write_midi(notes, path):
 
 def separate_vocals(input_path: Path) -> Path:
     job_id = input_path.stem
-    output_dir = Path(settings.OUTPUT_DIR)
+    # Mirror the previous demucs layout (OUTPUT_DIR/<name>/<job_id>/vocals.wav)
+    # so the rest of the app addresses stems the same way, just under the
+    # configured separator name instead of a hardcoded "htdemucs".
+    output_dir = Path(settings.OUTPUT_DIR) / settings.SEPARATOR_NAME / job_id
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    args = [
-        "--out", str(output_dir),
-        "--name", "htdemucs",
-        "--two-stems", "vocals",
-        str(input_path)
-    ]
+    # We only need the vocal stem for pitch detection. output_single_stem skips
+    # writing the residual, and custom_output_names pins a deterministic filename
+    # (stem matching is case-insensitive, so "vocals" works across model archs).
+    separator = Separator(
+        output_dir=str(output_dir),
+        output_format="WAV",
+        output_single_stem="vocals",
+        model_file_dir=settings.SEPARATOR_MODEL_DIR,
+    )
 
     try:
-        main(args)
+        separator.load_model(model_filename=settings.SEPARATOR_MODEL)
+        produced = separator.separate(
+            str(input_path), custom_output_names={"vocals": "vocals"}
+        )
     except Exception as e:
-        raise RuntimeError(f"Demucs separation failed: {str(e)}")
+        raise RuntimeError(f"Vocal separation failed ({settings.SEPARATOR_MODEL}): {e}")
 
-    vocals_path = output_dir / "htdemucs" / job_id / "vocals.wav"
-
+    vocals_path = output_dir / produced[0]
     if not vocals_path.exists():
         raise RuntimeError(f"Separation failed. Vocals not found at {vocals_path}")
 
